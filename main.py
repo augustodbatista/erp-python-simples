@@ -1,21 +1,63 @@
 import tkinter as tk
-from user_operations import verify_user
 from tkinter import messagebox, ttk
 from tkcalendar import DateEntry
 from ttkthemes import ThemedTk
+from datetime import date
+from user_operations import verify_user
 from data_operations import get_todos_vendedores, get_todos_clientes
-
-janela = ThemedTk(theme="clam")
-janela.title("Login - Detalhes ERP")
-
+from vendas_operation import add_venda
 
 def abrir_formulario_vendas(container):
-    """Cria o formulário de vendas dentro do container (frame) fornecido."""
-    # Limpa o frame de qualquer widget que estivesse lá antes
     for widget in container.winfo_children():
         widget.destroy()
 
-    # --- Linha 0: Identificação da Venda ---
+    def handle_salvar_venda():
+        numero_notinha = entry_notinha.get()
+        valor_notinha = entry_valor.get()
+
+        if not numero_notinha or not valor_notinha:
+            messagebox.showerror("Erro de Validação", "Número da Notinha e Valor Total são obrigatórios.")
+            return
+
+        try:
+            notinha_inteiro = int(numero_notinha)
+            valor_decimal = float(valor_notinha.replace(",", "."))
+        except ValueError:
+            messagebox.showerror("Erro de Formato", "O Número da Notinha e o Valor Total devem ser números válidos.")
+            return
+
+        dados_venda = {
+            'numero_notinha': notinha_inteiro,
+            'data_venda': entry_data.get_date(),
+            'valor_total': valor_decimal,
+            'pago': status_pago.get(),
+            'forma_pagamento': entry_forma_pagamento.get(),
+            'data_vencimento': entry_data_vencimento.get_date(),
+            'cliente_id': mapa_clientes[cliente_selecionado.get()],
+            'vendedor_id': mapa_vendedores[vendedor_selecionado.get()]
+        }
+
+        resultado = add_venda(dados_venda)
+        if resultado:
+            messagebox.showinfo("Sucesso", f"Venda ID {resultado.id} salva com sucesso!")
+            limpar_formulario()
+        else:
+            messagebox.showerror("Erro de Banco de Dados", "Não foi possível salvar a venda.")
+
+    def limpar_formulario():
+        entry_notinha.delete(0, tk.END)
+        entry_data.set_date(date.today())
+        vendedor_selecionado.set("")
+        cliente_selecionado.set("")
+        entry_valor.delete(0, tk.END)
+        entry_forma_pagamento.delete(0, tk.END)
+        entry_data_vencimento.set_date(date.today())
+        status_pago.set(False)
+
+    vendedor_selecionado = tk.StringVar()
+    cliente_selecionado = tk.StringVar()
+    status_pago = tk.BooleanVar()
+
     ttk.Label(container, text="Número Notinha:").grid(row=0, column=0, padx=5, pady=10, sticky="w")
     entry_notinha = ttk.Entry(container, style='Padded.TEntry')
     entry_notinha.grid(row=0, column=1, padx=5, pady=10)
@@ -24,11 +66,10 @@ def abrir_formulario_vendas(container):
     entry_data = DateEntry(container, date_pattern='dd/MM/yyyy', style='Padded.TEntry')
     entry_data.grid(row=0, column=3, padx=5, pady=10)
 
-    # --- Linha 1: Partes Envolvidas ---
     ttk.Label(container, text="Vendedor:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
     objetos_vendedor = get_todos_vendedores()
-    lista_vendedores = [v.nome_vendedor for v in objetos_vendedor] if objetos_vendedor else ["Nenhum vendedor cadastrado"]
-    vendedor_selecionado = tk.StringVar()
+    mapa_vendedores = {v.nome_vendedor: v.id for v in objetos_vendedor}
+    lista_vendedores = list(mapa_vendedores.keys())
     combo_vendedor = ttk.Combobox(container, textvariable=vendedor_selecionado, values=lista_vendedores, state='readonly')
     if lista_vendedores:
         combo_vendedor.set(lista_vendedores[0])
@@ -36,14 +77,13 @@ def abrir_formulario_vendas(container):
 
     ttk.Label(container, text="Cliente:").grid(row=1, column=2, padx=5, pady=5, sticky="w")
     objetos_cliente = get_todos_clientes()
-    lista_clientes = [c.nome_cliente for c in objetos_cliente] if objetos_cliente else ["Nenhum cliente cadastrado"]
-    cliente_selecionado = tk.StringVar()
+    mapa_clientes = {c.nome_cliente: c.id for c in objetos_cliente}
+    lista_clientes = list(mapa_clientes.keys())
     combo_cliente = ttk.Combobox(container, textvariable=cliente_selecionado, values=lista_clientes, state='readonly')
     if lista_clientes:
         combo_cliente.set(lista_clientes[0])
     combo_cliente.grid(row=1, column=3, padx=5, pady=5)
-
-    # --- Linha 2: Detalhes Financeiros ---
+    
     ttk.Label(container, text="Valor Total:").grid(row=2, column=0, padx=5, pady=5, sticky="w")
     entry_valor = ttk.Entry(container, style='Padded.TEntry')
     entry_valor.grid(row=2, column=1, padx=5, pady=5)
@@ -52,18 +92,15 @@ def abrir_formulario_vendas(container):
     entry_forma_pagamento = ttk.Entry(container, style='Padded.TEntry')
     entry_forma_pagamento.grid(row=2, column=3, padx=5, pady=5)
 
-    # --- Linha 3: Status e Prazos ---
     ttk.Label(container, text="Data de Vencimento:").grid(row=3, column=0, padx=5, pady=5, sticky="w")
     entry_data_vencimento = DateEntry(container, date_pattern='dd/MM/yyyy', style='Padded.TEntry')
     entry_data_vencimento.grid(row=3, column=1, padx=5, pady=5)
 
     ttk.Label(container, text="Está Pago?").grid(row=3, column=2, padx=5, pady=5, sticky="w")
-    status_pago = tk.BooleanVar()
     check_pago = ttk.Checkbutton(container, variable=status_pago)
     check_pago.grid(row=3, column=3, padx=5, pady=5, sticky="w")
-
-    # --- Linha 4: Botão de Ação ---
-    botao_salvar = ttk.Button(container, text="Salvar Venda") # command virá depois
+    
+    botao_salvar = ttk.Button(container, text="Salvar Venda", command=handle_salvar_venda)
     botao_salvar.grid(row=4, column=0, columnspan=4, pady=20)
 
 def abrir_janela_principal():
@@ -90,13 +127,17 @@ def abrir_janela_principal():
 def handle_login():
     username = usuario_entry.get()
     password = senha_entry.get()
+    
     autenticacao_usuario = verify_user(username, password)
     if autenticacao_usuario:
         messagebox.showinfo("Login bem-sucedido", f"Bem-vindo, {autenticacao_usuario.nome_usuario}!")
-        janela.withdraw()  # Esconde a janela de login
-        abrir_janela_principal()  # Abre a janela principal
+        janela.withdraw()
+        abrir_janela_principal()
     else:
         messagebox.showerror("Erro de Login", "Usuário ou senha incorretos.")
+
+janela = ThemedTk(theme="clam")
+janela.title("Login - Detalhes ERP")
 
 usuario_label = ttk.Label(janela, text="Usuário:")
 usuario_entry = ttk.Entry(janela)
@@ -104,12 +145,10 @@ senha_label = ttk.Label(janela, text="Senha:")
 senha_entry = ttk.Entry(janela, show="*")
 login_button = ttk.Button(janela, text="Entrar", command=handle_login)
 
-
-usuario_label.grid(row=0, column=0)
-usuario_entry.grid(row=0, column=1)
-senha_label.grid(row=1, column=0)
-senha_entry.grid(row=1, column=1)
-login_button.grid(row=2, column=0, columnspan=2)  
-
+usuario_label.grid(row=0, column=0, padx=5, pady=5)
+usuario_entry.grid(row=0, column=1, padx=5, pady=5)
+senha_label.grid(row=1, column=0, padx=5, pady=5)
+senha_entry.grid(row=1, column=1, padx=5, pady=5)
+login_button.grid(row=2, column=0, columnspan=2, pady=10)
 
 janela.mainloop()
