@@ -6,6 +6,7 @@ from datetime import date
 from user_operations import verify_user
 from data_operations import get_todos_vendedores, get_todos_clientes
 from vendas_operation import add_venda
+from cliente_operations import add_cliente
 
 def abrir_formulario_vendas(container):
     for widget in container.winfo_children():
@@ -103,6 +104,53 @@ def abrir_formulario_vendas(container):
     botao_salvar = ttk.Button(container, text="Salvar Venda", command=handle_salvar_venda)
     botao_salvar.grid(row=4, column=0, columnspan=4, pady=20)
 
+def abrir_formulario_clientes(container):
+    for widget in container.winfo_children():
+        widget.destroy()
+
+    def handle_salvar_cliente():
+        cliente_nome = entry_cliente.get()
+        cliente_endereco = entry_endereco.get()
+        cliente_telefone = entry_telefone.get()
+
+        if not cliente_nome:
+            messagebox.showwarning("Campo Obrigatório", "O campo 'Nome do Cliente' não pode estar vazio.")
+            return
+        
+        dados_cliente = {
+            'nome_cliente': cliente_nome,
+            'endereco': cliente_endereco,
+            'telefone': cliente_telefone
+        }
+
+        salvar_cliente = add_cliente(dados_cliente)
+        if salvar_cliente:
+            messagebox.showinfo("Sucesso", f"Cliente ID {salvar_cliente.id} salvo com sucesso!")
+            limpar_formulario_cliente()
+        else:
+            messagebox.showerror("Erro de Banco de Dados", "Não foi possível salvar o cliente.")
+
+    def limpar_formulario_cliente():
+        entry_cliente.delete(0, tk.END)
+        entry_endereco.delete(0, tk.END)
+        entry_telefone.delete(0, tk.END)
+
+    ttk.Label(container, text="Nome do Cliente:").grid(row=0, column=0, padx=5, pady=10, sticky="w")
+    entry_cliente = ttk.Entry(container, style='Padded.TEntry')
+    entry_cliente.grid(row=0, column=1, padx=5, pady=10)
+
+    ttk.Label(container, text="Endereço:").grid(row=1, column=0, padx=5, pady=10, sticky="w")
+    entry_endereco = ttk.Entry(container, style='Padded.TEntry')
+    entry_endereco.grid(row=1, column=1, padx=5, pady=10)
+
+    ttk.Label(container, text="Telefone:").grid(row=2, column=0, padx=5, pady=10, sticky="w")
+    entry_telefone = ttk.Entry(container, style='Padded.TEntry')
+    entry_telefone.grid(row=2, column=1, padx=5, pady=10)
+
+    botao_salvar_cliente = ttk.Button(container, text="Salvar Cliente", command=handle_salvar_cliente)
+    botao_salvar_cliente.grid(row=3, column=0, columnspan=4, pady=20)
+
+
 def abrir_janela_principal():
     janela_principal = tk.Toplevel(janela)
     janela_principal.title("Sistema ERP - Principal")
@@ -119,9 +167,10 @@ def abrir_janela_principal():
     
     menu_vendas = tk.Menu(barra_de_menu, tearoff=0)
     menu_vendas.add_command(label="Registrar Nova Venda", command=lambda: abrir_formulario_vendas(frame_principal))
-    
     barra_de_menu.add_cascade(label="Vendas", menu=menu_vendas)
-
+    menu_cadastro = tk.Menu(barra_de_menu, tearoff=0)
+    menu_cadastro.add_command(label="Clientes", command=lambda: abrir_formulario_clientes(frame_principal))
+    barra_de_menu.add_cascade(label="Cadastro", menu=menu_cadastro)
     janela_principal.protocol("WM_DELETE_WINDOW", janela.destroy)
 
 def handle_login():
