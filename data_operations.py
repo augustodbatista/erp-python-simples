@@ -22,3 +22,12 @@ def get_todos_clientes():
         return clientes
     finally:
         db.close()
+
+def search_clientes_por_nome(termo_busca: str):
+    db = SessionLocal()
+    try:
+        search_clientes = db.query(Cliente).filter(Cliente.nome_cliente.ilike(f'%{termo_busca}%')).all()
+        return search_clientes
+    finally:
+        db.close()
+    
