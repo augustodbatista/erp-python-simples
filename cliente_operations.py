@@ -22,6 +22,7 @@ def add_cliente(dados_cliente: dict):
         db.refresh(novo_cliente)
         return novo_cliente
     except Exception as e:
+        print(f"Erro detalhado ao adicionar cliente: {e}")
         db.rollback()
         return None
     finally:

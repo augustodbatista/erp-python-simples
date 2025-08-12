@@ -26,7 +26,9 @@ def abrir_formulario_vendas(container):
         except ValueError:
             messagebox.showerror("Erro de Formato", "O Número da Notinha e o Valor Total devem ser números válidos.")
             return
-
+        if 'id' not in dados_cliente_selecionado:
+            messagebox.showwarning("Seleção Necessária", "Por favor, busque e selecione um cliente na tabela antes de salvar.")
+            return
         dados_venda = {
             'numero_notinha': notinha_inteiro,
             'data_venda': entry_data.get_date(),
@@ -34,9 +36,9 @@ def abrir_formulario_vendas(container):
             'pago': status_pago.get(),
             'forma_pagamento': entry_forma_pagamento.get(),
             'data_vencimento': entry_data_vencimento.get_date(),
-#            'cliente_id': mapa_clientes[cliente_selecionado.get()],
-            'cliente_id': 1, #placeholder
-            'vendedor_id': mapa_vendedores[vendedor_selecionado.get()]
+            'cliente_id': dados_cliente_selecionado['id'], 
+            'vendedor_id': mapa_vendedores[vendedor_selecionado.get()],
+            'participacao_vendas': status_participacao.get()
         }
 
         resultado = add_venda(dados_venda)
@@ -88,6 +90,7 @@ def abrir_formulario_vendas(container):
 
     vendedor_selecionado = tk.StringVar()
     status_pago = tk.BooleanVar()
+    status_participacao = tk.BooleanVar()
     
     # ... (criação de todos os labels, entries, combos, etc.)
     label_notinha = ttk.Label(container, text="Número Notinha:")
@@ -127,6 +130,7 @@ def abrir_formulario_vendas(container):
     entry_data_vencimento = DateEntry(container, date_pattern='dd/MM/yyyy', style='Padded.TEntry')
     label_pago = ttk.Label(container, text="Está Pago?")
     check_pago = ttk.Checkbutton(container, variable=status_pago)
+    check_participacao = ttk.Checkbutton(container, variable=status_participacao)
     botao_salvar = ttk.Button(container, text="Salvar Venda", command=handle_salvar_venda)
 
 
@@ -164,9 +168,14 @@ def abrir_formulario_vendas(container):
     entry_data_vencimento.grid(row=6, column=1, padx=5, pady=5)
     label_pago.grid(row=6, column=2, padx=5, pady=5, sticky="w")
     check_pago.grid(row=6, column=3, padx=5, pady=5, sticky="w")
-    
-    # Linha 7 - Botão Salvar
-    botao_salvar.grid(row=7, column=0, columnspan=4, pady=20)
+
+    # Linha 7: Participação
+    ttk.Label(container, text="Com participação?").grid(row=7, column=0, padx=5, pady=5, sticky="w")
+    check_participacao.grid(row=7, column=1, padx=5, pady=5, sticky="w")
+
+     # --- Linha 8: Botão Salvar (AJUSTADO) ---
+    botao_salvar = ttk.Button(container, text="Salvar Venda", command=handle_salvar_venda)
+    botao_salvar.grid(row=8, column=0, columnspan=4, pady=20)
 
 def abrir_formulario_clientes(container):
     for widget in container.winfo_children():

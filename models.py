@@ -21,7 +21,7 @@ class Cliente(Base):
     id = Column(Integer, primary_key=True)
     nome_cliente = Column(String(100), nullable=False)
     endereco = Column(String(200))
-    telefone = Column(String(20), unique=True)
+    telefone = Column(String(20))
     vendas = relationship("Venda", back_populates="cliente")
 
     def __repr__(self):
@@ -50,6 +50,7 @@ class Venda(Base):
     data_vencimento = Column(Date)
     cliente_id = Column(Integer, ForeignKey('clientes.id'), nullable=False)
     vendedor_id = Column(Integer, ForeignKey('vendedores.id'), nullable=False)
+    participacao_vendas = Column(Boolean, default=False)
     cliente = relationship("Cliente", back_populates="vendas")
     vendedor = relationship("Vendedor", back_populates="vendas")
     def __repr__(self):

@@ -8,12 +8,7 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def add_venda(dados_venda: dict):
-    """
-    Adiciona uma nova venda ao banco de dados.
-    'dados_venda' é um dicionário esperado com as chaves:
-    'data_venda', 'valor_total', 'pago', 'forma_pagamento',
-    'data_vencimento', 'cliente_id', 'vendedor_id'
-    """
+
     db = SessionLocal()
     
     nova_venda = Venda(
@@ -24,7 +19,8 @@ def add_venda(dados_venda: dict):
         forma_pagamento=dados_venda['forma_pagamento'],
         data_vencimento=dados_venda.get('data_vencimento'), # .get() é mais seguro para campos opcionais
         cliente_id=dados_venda['cliente_id'],
-        vendedor_id=dados_venda['vendedor_id']
+        vendedor_id=dados_venda['vendedor_id'],
+        participacao_vendas=dados_venda['participacao_vendas']
     )
 
     try:
