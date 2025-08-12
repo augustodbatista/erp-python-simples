@@ -6,3 +6,6 @@ __pycache__/
 
 # Arquivos de banco de dados SQLite
 *.db
+
+# Scripts de desenvolvimento
+populate_db.py
