@@ -55,3 +55,28 @@ class Venda(Base):
     vendedor = relationship("Vendedor", back_populates="vendas")
     def __repr__(self):
         return f"Venda(id={self.id}, cliente_id={self.cliente_id}, vendedor_id={self.vendedor_id}, valor_total={self.valor_total})"
+    
+class Fornecedor(Base):
+    __tablename__ = 'fornecedores'
+
+    id = Column(Integer, primary_key=True)
+    nome_fornecedor = Column(String(50), nullable=False)
+    cpf_cnpj = Column(String(50))
+    telefone = Column(String(50))
+    endereco = Column(String(50))
+    pagamentos = relationship("Pagamento", back_populates="fornecedor")
+    def __repr__(self):
+        return f"Fornecedor(id={self.id}, nome_fornecedor={self.nome_fornecedor})"
+
+class Pagamento(Base):
+    __tablename__ = "pagamentos"
+
+    id = Column(Integer, primary_key=True)
+    numero_nota = Column(String(50))
+    data_vencimento = Column(Date, nullable=False)
+    valor_nota = Column(Numeric(10,2), nullable=False)
+    data_pagamento = Column(Date)
+    fornecedor_id = Column(Integer, ForeignKey('fornecedores.id'), nullable=False)
+    fornecedor = relationship("Fornecedor", back_populates="pagamentos")
+    def __repr__(self):
+        return f"Pagamento(id={self.id}, numero_nota={self.numero_nota}, data_vencimento={self.data_vencimento}, valor_nota={self.valor_nota})"

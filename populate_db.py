@@ -2,7 +2,7 @@
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
-from models import Vendedor, Cliente
+from models import Vendedor, Cliente, Fornecedor
 from datetime import date
 
 DATABASE_URL = "sqlite:///erp_database.db"
@@ -39,6 +39,19 @@ def adicionar_dados_iniciais():
             print("Clientes adicionados.")
         else:
             print("Clientes já existem.")
+
+        #Adicionar Fornecedores
+        if db.query(Fornecedor).count() == 0:
+            print("Adicionando fornecedores iniciais...")
+            fornecedores = [
+                Fornecedor(nome_fornecedor="CEMIG DISTRIBUICAO S.A", cpf_cnpj="06.981.180/0001-16"),
+                Fornecedor(nome_fornecedor="Loja de Ferragens TUDO A MÃO", cpf_cnpj="12.345.678/0001-99")
+            ]
+            db.add_all(fornecedores)
+            db.commit()
+            print("Fornecedores adicionados.")
+        else:
+            print("Fornecedores já existem.")
             
     finally:
         db.close()
