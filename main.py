@@ -259,6 +259,7 @@ def abrir_formulario_pagamentos(container):
 
         if not valor_nota:
             messagebox.showerror("Erro de Validação","O valor da nota é OBRIGATÓRIO")
+            return
 
         try:
             valor_decimal = float(valor_nota.replace(',','.'))
@@ -268,12 +269,16 @@ def abrir_formulario_pagamentos(container):
         if 'id' not in dados_fornecedor_selecionado:
             messagebox.showwarning("Seleção Necessária", "Por favor, busque e selecione um fornecedor na tabela antes de salvar.")
             return
-        
+        try:
+            data_pagamento_final = entry_data_pagamento.get_date()
+        except ValueError:
+            data_pagamento_final = None
+
         dados_pagamento = {
             'numero_nota': entry_numero_nota.get(),
             'data_vencimento': data_vencimento,
             'valor_nota': valor_decimal,
-            'data_pagamento': entry_data_pagamento.get_date(),
+            'data_pagamento': data_pagamento_final,
             'fornecedor_id': dados_fornecedor_selecionado['id']
         }
 
@@ -291,7 +296,7 @@ def abrir_formulario_pagamentos(container):
         entry_numero_nota.delete(0, tk.END)
         entry_data_vencimento.set_date(date.today())
         entry_valor.delete(0, tk.END)
-        entry_data_pagamento.set_date(date.today())
+        entry_data_pagamento.delete(0, tk.END)
         entry_buscar_fornecedor.delete(0, tk.END)
 
 
@@ -324,6 +329,7 @@ def abrir_formulario_pagamentos(container):
 
     label_data_pagamento = ttk.Label(container, text="Data de Pagamento:")
     entry_data_pagamento = DateEntry(container, date_pattern='dd/MM/yyyy', style='Padded.TEntry')
+    entry_data_pagamento.delete(0, tk.END)
 
     botao_salvar = ttk.Button(container, text="Salvar", command=handle_salvar_pagamento) # FALTA COMMAND
 
