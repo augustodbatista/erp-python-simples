@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Vendedor, Cliente
+from models import Vendedor, Cliente, Fornecedor, Pagamento
 
 DATABASE_URL = "sqlite:///erp_database.db"
 engine = create_engine(DATABASE_URL)
@@ -30,4 +30,12 @@ def search_clientes_por_nome(termo_busca: str):
         return search_clientes
     finally:
         db.close()
-    
+
+def search_fornecedores_por_nome(termo_busca: str):
+    db = SessionLocal()
+    try:
+        search_fornecedores = db.query(Fornecedor).filter(Fornecedor.nome_fornecedor.ilike(f'%{termo_busca}%')).all()
+        return search_fornecedores
+    finally:
+        db.close()
+
