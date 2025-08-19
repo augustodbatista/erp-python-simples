@@ -762,17 +762,18 @@ def abrir_janela_principal():
 
     janela_principal.protocol("WM_DELETE_WINDOW", janela.destroy)
 
-def handle_login():
+def handle_login(event=None):
     username = usuario_entry.get()
     password = senha_entry.get()
     
     autenticacao_usuario = verify_user(username, password)
     if autenticacao_usuario:
-        messagebox.showinfo("Login bem-sucedido", f"Bem-vindo, {autenticacao_usuario.nome_usuario}!")
+        logging.info(f"Login bem-sucedido para o usuário '{autenticacao_usuario.nome_usuario}'.")
         janela.withdraw()
         abrir_janela_principal()
     else:
-        messagebox.showerror("Erro de Login", "Usuário ou senha incorretos.")
+        logging.warning(f"Tentativa de login falhou para o usuário '{usuario_entry.get()}'.")
+        messagebox.showerror("Erro de Login, Usuário ou senha incorretos.")
 
 janela = ThemedTk(theme="clam")
 janela.title("Login - Detalhes ERP")
@@ -788,5 +789,6 @@ usuario_entry.grid(row=0, column=1, padx=5, pady=5)
 senha_label.grid(row=1, column=0, padx=5, pady=5)
 senha_entry.grid(row=1, column=1, padx=5, pady=5)
 login_button.grid(row=2, column=0, columnspan=2, pady=10)
+janela.bind("<Return>", handle_login)
 
 janela.mainloop()
