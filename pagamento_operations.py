@@ -1,14 +1,7 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from models import Pagamento
-
-DATABASE_URL = "sqlite:///erp_database.db"
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+from database import SessionLocal
 
 def add_pagamento(dados_pagamento: dict):
-
-    db = SessionLocal()
     
     novo_pagamento = Pagamento(
         numero_nota=dados_pagamento['numero_nota'],
@@ -19,14 +12,10 @@ def add_pagamento(dados_pagamento: dict):
     )
 
     try:
-        db.add(novo_pagamento)
-        db.commit()
-        db.refresh(novo_pagamento)
-        print(f"Pagamento ID {novo_pagamento.id} adicionada com sucesso!")
-        return novo_pagamento
+        with SessionLocal() as db:
+            db.add(novo_pagamento)
+            db.commit()
+            db.refresh(novo_pagamento)
+            return novo_pagamento
     except Exception as e:
-        print(f"Erro ao adicionar pagamento: {e}")
-        db.rollback()
         return None
-    finally:
-        db.close()
