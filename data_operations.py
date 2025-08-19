@@ -59,10 +59,14 @@ def search_vendas_nao_pagas(termo_busca: str):
         logging.error(f"Erro ao buscar vendas pelo termo'{termo_busca}': {e}")
         return []
 
-def get_pagamentos_por_periodo(start_date, end_date):
+def get_pagamentos_por_periodo(start_date, end_date, status_pagamento: str = "Todos"):
     try:
         with SessionLocal() as db:
-            query = db.query(Pagamento).filter(Pagamento.data_vencimento.between(start_date, end_date))
+            query = db.query(Pagamento).options(joinedload(Pagamento.fornecedor)).filter(Pagamento.data_vencimento.between(start_date, end_date))
+            if status_pagamento == "Pagas":
+                query = query.filter(Pagamento.data_pagamento.is_not(None))
+            elif status_pagamento == "Não Pagas":
+                query = query.filter(Pagamento.data_pagamento.is_(None))
             pagamentos_periodo = query.all()
             return pagamentos_periodo
     except Exception as e:

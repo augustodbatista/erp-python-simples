@@ -430,11 +430,39 @@ def abrir_formulario_relatorio_pagamentos(container):
     for widget in container.winfo_children():
          widget.destroy()
 
+    def handle_buscar_relatorio_pagamentos():
+        start_date = entry_data_inicio.get_date()
+        end_date = entry_data_fim.get_date()
+        status_selecionado = status_pagamento_selecionado.get()
+        lista_pagamentos = get_pagamentos_por_periodo(start_date, end_date, status_selecionado)
+        
+
+        def preencher_relatorio_pagamentos(pagamentos):
+            for item in tabela_relatorio.get_children():
+                tabela_relatorio.delete(item)
+            for pagamento in lista_pagamentos:
+                valores_da_linha = (
+                    pagamento.id,
+                    pagamento.numero_nota,
+                    pagamento.data_vencimento.strftime('%d/%m/%Y'),
+                    pagamento.valor_nota,
+                    pagamento.data_pagamento.strftime('%d/%m/%Y')if pagamento.data_pagamento else 'N/A',
+                    pagamento.fornecedor.nome_fornecedor
+                )
+
+                tabela_relatorio.insert(parent='', index='end', values=valores_da_linha)
+        preencher_relatorio_pagamentos(lista_pagamentos)
+    
     label_data_inicio = ttk.Label(container, text="Data Início:")
     entry_data_inicio = DateEntry(container, date_pattern='dd/MM/yyyy')
     label_data_fim = ttk.Label(container, text="Data Fim:")
     entry_data_fim = DateEntry(container, date_pattern='dd/MM/yyyy')
     botao_buscar_relatorio_pagamentos = ttk.Button(container, text="Buscar Pagamentos", command=handle_buscar_relatorio_pagamentos)
+    status_pagamento_selecionado = tk.StringVar()
+    lista_status_pagamento = ['Todos', 'Pagas', 'Não Pagas']
+    status_pagamento = ttk.Label(container, text="Status Pagamento")
+    combo_status_pagamento = ttk.Combobox(container, textvariable=status_pagamento_selecionado, values=lista_status_pagamento, state="readonly")
+    combo_status_pagamento.set("Todos")
 
     colunas = ('id', 'numero_nota', 'data_vencimento', 'valor_nota', 'data_pagamento', 'fornecedor')
     tabela_relatorio = ttk.Treeview(container, columns=colunas, show='headings', height=15)
@@ -458,31 +486,25 @@ def abrir_formulario_relatorio_pagamentos(container):
     label_data_inicio.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
     entry_data_inicio.grid(row=row_counter, column=1, padx=5, pady=5)
     row_counter += 1
+
     label_data_fim.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
     entry_data_fim.grid(row=row_counter, column=1, padx=5, pady=5)
     row_counter += 1
+
+    status_pagamento.grid(row=row_counter,column=0, padx=5, pady=5, sticky="w")
+    combo_status_pagamento.grid(row= row_counter, column=1,padx=5, pady=5)
+    row_counter+=1
+
     botao_buscar_relatorio_pagamentos.grid(row=row_counter, column=0, padx=4, pady=20)
+    row_counter += 1
+    
+    tabela_relatorio.grid(row=row_counter, column=0, columnspan=4, padx=5, pady=5, sticky="nsew")
+    scrollbar_relatorio = ttk.Scrollbar(container, orient="vertical", command=tabela_relatorio.yview)
+    scrollbar_relatorio.grid(row=row_counter, column=4, sticky="ns")
+    tabela_relatorio.configure(yscrollcommand=scrollbar_relatorio.set)
+    row_counter += 1
 
-    def handle_buscar_relatorio_pagamentos():
-        start_date = entry_data_inicio.get_date()
-        end_date = entry_data_fim.get_date()
-        lista_pagamentos = get_pagamentos_por_periodo(start_date, end_date)
-
-        def preencher_relatorio_pagamentos(pagamentos):
-            for item in tabela_relatorio.get_children():
-                tabela_relatorio.delete(item)
-            for pagamento in lista_pagamentos:
-                valores_da_linha = (
-                    pagamento.id,
-                    pagamento.numero_nota,
-                    pagamento.data_vencimento.strftime('%d/%m/%Y'),
-                    pagamento.valor_nota,
-                    pagamento.data_pagamento.strftime('%d/%m/%Y')if pagamento.data_pagamento else 'N/A',
-                    pagamento.fornecedor.nome_fornecedor
-                )
-
-                tabela_relatorio.insert(parent='', index='end', values=valores_da_linha)
-        preencher_relatorio_pagamentos()
+    
 
 def abrir_formulario_clientes(container):
     for widget in container.winfo_children():
