@@ -61,25 +61,33 @@ def marcar_venda_como_paga(venda_id: int):
 
 
 
-def get_sales_by_period_and_vendedor(start_date: date, end_date: date, vendedor_id: int = None):
+def get_sales_by_period_and_vendedor(start_date: date, end_date: date, vendedor_id: int = None, status_pagamento: str = 'Todos'):
 
     try:
         with SessionLocal() as db:
             query = db.query(Venda).options(joinedload(Venda.cliente), joinedload(Venda.vendedor)).filter(Venda.data_venda.between(start_date, end_date))
             if vendedor_id:
                 query = query.filter(Venda.vendedor_id == vendedor_id)
+            if status_pagamento == "Pagas":
+                query = query.filter(Venda.pago == True)
+            elif status_pagamento == "Não Pagas":
+                query = query.filter(Venda.pago == False)
             return query.all()
     except Exception as e:
         logging.error(f"Erro ao buscar vendas por período e vendedor: {e}")
         return []
 
-def get_sales_by_period_and_cliente(start_date: date, end_date: date, cliente_id: int = None):
+def get_sales_by_period_and_cliente(start_date: date, end_date: date, cliente_id: int = None, status_pagamento: str = 'Todos'):
 
     try:
         with SessionLocal() as db:
             query = db.query(Venda).options(joinedload(Venda.cliente), joinedload(Venda.vendedor)).filter(Venda.data_venda.between(start_date, end_date))
             if cliente_id:
                 query = query.filter(Venda.cliente_id == cliente_id)
+            if status_pagamento == "Pagas":
+                query = query.filter(Venda.pago == True)
+            elif status_pagamento == "Não Pagas":
+                query = query.filter(Venda.pago == False)
             return query.all()
     except Exception as e:
         logging.error(f"Erro ao buscar vendas por período e cliente: {e}")
@@ -106,3 +114,4 @@ def get_paid_unpaid_sales_by_client(cliente_id: int, paid_status: bool = None):
     except Exception as e:
         logging.error(f"Erro ao buscar vendas: {e}")
         return []
+

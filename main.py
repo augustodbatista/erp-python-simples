@@ -4,7 +4,7 @@ from tkcalendar import DateEntry
 from ttkthemes import ThemedTk
 from datetime import date
 from user_operations import verify_user
-from data_operations import get_todos_vendedores, get_todos_clientes, search_clientes_por_nome, search_fornecedores_por_nome, search_vendas_nao_pagas
+from data_operations import get_todos_vendedores, get_todos_clientes, search_clientes_por_nome, search_fornecedores_por_nome, search_vendas_nao_pagas, get_pagamentos_por_periodo
 from vendas_operation import add_venda, get_sales_by_period_and_vendedor, get_sales_by_period_and_cliente, get_total_sales_by_period, get_paid_unpaid_sales_by_client
 from cliente_operations import add_cliente
 from pagamento_operations import add_pagamento
@@ -274,15 +274,24 @@ def abrir_formulario_vendas_nao_pagas(container):
     # Initial load of unpaid sales
     handle_buscar_vendas()
 
-
-
 def abrir_formulario_relatorios_vendas(container):
-    print("DEBUG: Abrindo formulário de relatórios de vendas...")
     for widget in container.winfo_children():
         widget.destroy()
-    print(f"DEBUG: Container após destroy: {len(container.winfo_children())} widgets")
 
-    # Date pickers
+    def handle_gerar_relatorio():
+        start_date = entry_data_inicio.get_date()
+        end_date = entry_data_fim.get_date()
+        status_selecionado = status_pagamento_selecionado.get()
+        vendas = []
+        if cliente_id_selecionado is not None:
+            vendas = get_sales_by_period_and_cliente(start_date=start_date, end_date=end_date, cliente_id=cliente_id_selecionado, status_pagamento=status_selecionado)
+        
+        else:
+            vendedor_nome = vendedor_selecionado.get()
+            vendedor_id = mapa_vendedores.get(vendedor_nome) if vendedor_nome != "Todos" else None
+            vendas = get_sales_by_period_and_vendedor(start_date=start_date, end_date=end_date, vendedor_id=vendedor_id, status_pagamento=status_selecionado)
+        preencher_tabela_vendas(vendas)
+
     label_data_inicio = ttk.Label(container, text="Data Início:")
     entry_data_inicio = DateEntry(container, date_pattern='dd/MM/yyyy')
     label_data_fim = ttk.Label(container, text="Data Fim:")
@@ -297,10 +306,16 @@ def abrir_formulario_relatorios_vendas(container):
     combo_vendedor = ttk.Combobox(container, textvariable=vendedor_selecionado, values=lista_vendedores, state='readonly')
     combo_vendedor.set("Todos")
 
-    # Cliente search
+
     label_cliente = ttk.Label(container, text="Cliente (Nome ou ID):")
     entry_cliente_busca = ttk.Entry(container)
-    cliente_id_selecionado = None # To store the ID of the selected client
+    cliente_id_selecionado = None 
+    
+    status_pagamento_selecionado = tk.StringVar()
+    lista_status_pagamento = ['Todos', 'Pagas', 'Não Pagas']
+    status_pagamento = ttk.Label(container, text="Status Pagamento")
+    combo_status_pagamento = ttk.Combobox(container, textvariable=status_pagamento_selecionado, values=lista_status_pagamento, state="readonly")
+    combo_status_pagamento.set("Todos")
 
     def handle_buscar_cliente_relatorio():
         nonlocal cliente_id_selecionado
@@ -311,7 +326,6 @@ def abrir_formulario_relatorios_vendas(container):
             return
 
         if termo_busca.isdigit():
-            # Assuming direct ID search for simplicity, or you'd need a get_client_by_id function
             cliente_id_selecionado = int(termo_busca)
             messagebox.showinfo("Busca de Cliente", f"Cliente ID {cliente_id_selecionado} selecionado.")
         else:
@@ -351,7 +365,6 @@ def abrir_formulario_relatorios_vendas(container):
     tabela_relatorio.column('pago', width=60)
     tabela_relatorio.column('data_vencimento', width=100)
 
-    # Summary label
     label_total_vendas = ttk.Label(container, text="Total de Vendas no Período: R$ 0.00")
 
     def preencher_tabela_vendas(vendas):
@@ -374,62 +387,12 @@ def abrir_formulario_relatorios_vendas(container):
             ))
             total_valor += float(venda.valor_total)
         label_total_vendas.config(text=f"Total de Vendas no Período: R$ {total_valor:.2f}")
-
-
-    def gerar_relatorio_vendas_vendedor():
-        start_date = entry_data_inicio.get_date()
-        end_date = entry_data_fim.get_date()
-        vendedor_nome = vendedor_selecionado.get()
         
-        vendedor_id = mapa_vendedores.get(vendedor_nome) if vendedor_nome != "Todos" else None
-        
-        vendas = get_sales_by_period_and_vendedor(start_date, end_date, vendedor_id)
-        preencher_tabela_vendas(vendas)
-
-    def gerar_relatorio_vendas_cliente():
-        start_date = entry_data_inicio.get_date()
-        end_date = entry_data_fim.get_date()
-        
-        if cliente_id_selecionado is None:
-            messagebox.showwarning("Seleção Necessária", "Por favor, busque e selecione um cliente para este relatório.")
-            return
-
-        vendas = get_sales_by_period_and_cliente(start_date, end_date, cliente_id_selecionado)
-        preencher_tabela_vendas(vendas)
-
-    def gerar_relatorio_total_vendas():
-        start_date = entry_data_inicio.get_date()
-        end_date = entry_data_fim.get_date()
-        total = get_total_sales_by_period(start_date, end_date)
-        messagebox.showinfo("Total de Vendas", f"O valor total de vendas no período é: R$ {total:.2f}")
-
-    def gerar_relatorio_vendas_pagas_nao_pagas():
-        if cliente_id_selecionado is None:
-            messagebox.showwarning("Seleção Necessária", "Por favor, busque e selecione um cliente para este relatório.")
-            return
-        
-        vendas_pagas = get_paid_unpaid_sales_by_client(cliente_id_selecionado, True)
-        vendas_nao_pagas = get_paid_unpaid_sales_by_client(cliente_id_selecionado, False)
-
-        preencher_tabela_vendas(vendas_pagas + vendas_nao_pagas) # Display all for the client
-        
-        total_pagas = sum(float(v.valor_total) for v in vendas_pagas)
-        total_nao_pagas = sum(float(v.valor_total) for v in vendas_nao_pagas)
-
-        messagebox.showinfo(
-            "Vendas Pagas/Não Pagas por Cliente",
-            f"Cliente: {entry_cliente_busca.get()}\n"
-            f"Total de Vendas Pagas: R$ {total_pagas:.2f}\n"
-            f"Total de Vendas Não Pagas: R$ {total_nao_pagas:.2f}"
-        )
-
 
     # Layout
     row_counter = 0
     label_data_inicio.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
     entry_data_inicio.grid(row=row_counter, column=1, padx=5, pady=5)
-    label_data_fim = ttk.Label(container, text="Data Fim:")
-    entry_data_fim = DateEntry(container, date_pattern='dd/MM/yyyy')
     row_counter += 1
     label_data_fim.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
     entry_data_fim.grid(row=row_counter, column=1, padx=5, pady=5)
@@ -444,6 +407,10 @@ def abrir_formulario_relatorios_vendas(container):
     botao_buscar_cliente_relatorio.grid(row=row_counter, column=2, padx=5, pady=5)
     row_counter += 1
 
+    status_pagamento.grid(row=row_counter,column=0, padx=5, pady=5, sticky="w")
+    combo_status_pagamento.grid(row= row_counter, column=1,padx=5, pady=5)
+    row_counter+=1
+
     tabela_relatorio.grid(row=row_counter, column=0, columnspan=4, padx=5, pady=5, sticky="nsew")
     scrollbar_relatorio = ttk.Scrollbar(container, orient="vertical", command=tabela_relatorio.yview)
     scrollbar_relatorio.grid(row=row_counter, column=4, sticky="ns")
@@ -456,9 +423,66 @@ def abrir_formulario_relatorios_vendas(container):
     container.grid_columnconfigure(1, weight=1)
     row_counter += 1
 
-    botao_gerar_relatório = ttk.Button(container, text="Gerar Relatório", command=handle_buscar_cliente_relatorio)
+    botao_gerar_relatorio = ttk.Button(container, text="Gerar Relatório", command=handle_gerar_relatorio)
+    botao_gerar_relatorio.grid(row=row_counter, column=0, columnspan=4, pady=20)
 
+def abrir_formulario_relatorio_pagamentos(container):
+    for widget in container.winfo_children():
+         widget.destroy()
 
+    label_data_inicio = ttk.Label(container, text="Data Início:")
+    entry_data_inicio = DateEntry(container, date_pattern='dd/MM/yyyy')
+    label_data_fim = ttk.Label(container, text="Data Fim:")
+    entry_data_fim = DateEntry(container, date_pattern='dd/MM/yyyy')
+    botao_buscar_relatorio_pagamentos = ttk.Button(container, text="Buscar Pagamentos", command=handle_buscar_relatorio_pagamentos)
+
+    colunas = ('id', 'numero_nota', 'data_vencimento', 'valor_nota', 'data_pagamento', 'fornecedor')
+    tabela_relatorio = ttk.Treeview(container, columns=colunas, show='headings', height=15)
+    tabela_relatorio.heading('id', text='ID')
+    tabela_relatorio.heading('numero_nota', text='Numero Nota')
+    tabela_relatorio.heading('data_vencimento', text='Data Vencimento')
+    tabela_relatorio.heading('valor_nota', text='Valor Nota')
+    tabela_relatorio.heading('fornecedor', text='Fornecedor')
+    tabela_relatorio.heading('data_pagamento', text='Data Pagamento')
+
+    tabela_relatorio.column('id', width=50)
+    tabela_relatorio.column('numero_nota', width=80)
+    tabela_relatorio.column('data_vencimento', width=100)
+    tabela_relatorio.column('valor_nota', width=100)
+    tabela_relatorio.column('fornecedor', width=150)
+    tabela_relatorio.column('data_pagamento', width=100)
+
+    # Layout
+
+    row_counter = 0
+    label_data_inicio.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
+    entry_data_inicio.grid(row=row_counter, column=1, padx=5, pady=5)
+    row_counter += 1
+    label_data_fim.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
+    entry_data_fim.grid(row=row_counter, column=1, padx=5, pady=5)
+    row_counter += 1
+    botao_buscar_relatorio_pagamentos.grid(row=row_counter, column=0, padx=4, pady=20)
+
+    def handle_buscar_relatorio_pagamentos():
+        start_date = entry_data_inicio.get_date()
+        end_date = entry_data_fim.get_date()
+        lista_pagamentos = get_pagamentos_por_periodo(start_date, end_date)
+
+        def preencher_relatorio_pagamentos(pagamentos):
+            for item in tabela_relatorio.get_children():
+                tabela_relatorio.delete(item)
+            for pagamento in lista_pagamentos:
+                valores_da_linha = (
+                    pagamento.id,
+                    pagamento.numero_nota,
+                    pagamento.data_vencimento.strftime('%d/%m/%Y'),
+                    pagamento.valor_nota,
+                    pagamento.data_pagamento.strftime('%d/%m/%Y')if pagamento.data_pagamento else 'N/A',
+                    pagamento.fornecedor.nome_fornecedor
+                )
+
+                tabela_relatorio.insert(parent='', index='end', values=valores_da_linha)
+        preencher_relatorio_pagamentos()
 
 def abrir_formulario_clientes(container):
     for widget in container.winfo_children():
@@ -733,6 +757,7 @@ def abrir_janela_principal():
     
     menu_relatorios = tk.Menu(barra_de_menu, tearoff=0)
     menu_relatorios.add_command(label="Vendas", command=lambda: abrir_formulario_relatorios_vendas(frame_principal))
+    menu_relatorios.add_command(label="Pagamentos", command=lambda: abrir_formulario_relatorio_pagamentos(frame_principal))
     barra_de_menu.add_cascade(label="Relatórios", menu=menu_relatorios)
 
     janela_principal.protocol("WM_DELETE_WINDOW", janela.destroy)
