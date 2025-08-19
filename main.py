@@ -4,8 +4,8 @@ from tkcalendar import DateEntry
 from ttkthemes import ThemedTk
 from datetime import date
 from user_operations import verify_user
-from data_operations import get_todos_vendedores, get_todos_clientes, search_clientes_por_nome, search_fornecedores_por_nome
-from vendas_operation import add_venda
+from data_operations import get_todos_vendedores, get_todos_clientes, search_clientes_por_nome, search_fornecedores_por_nome, search_vendas_nao_pagas
+from vendas_operation import add_venda, get_sales_by_period_and_vendedor, get_sales_by_period_and_cliente, get_total_sales_by_period, get_paid_unpaid_sales_by_client
 from cliente_operations import add_cliente
 from pagamento_operations import add_pagamento
 from fornecedor_operations import add_fornecedor
@@ -134,7 +134,6 @@ def abrir_formulario_vendas(container):
     check_pago = ttk.Checkbutton(container, variable=status_pago)
     check_participacao = ttk.Checkbutton(container, variable=status_participacao)
 
-    # --- Layout com Grid (AGORA EM ORDEM E SEM COLISÕES) ---
     # Linha 0
     label_notinha.grid(row=0, column=0, padx=5, pady=5, sticky="w")
     entry_notinha.grid(row=0, column=1, padx=5, pady=5)
@@ -177,9 +176,287 @@ def abrir_formulario_vendas(container):
     botao_salvar = ttk.Button(container, text="Salvar Venda", command=handle_salvar_venda)
     botao_salvar.grid(row=8, column=0, columnspan=4, pady=20)
 
-def abrir_formulario_clientes(container):
+def abrir_formulario_vendas_nao_pagas(container):
     for widget in container.winfo_children():
         widget.destroy()
+
+    def handle_buscar_vendas():
+        termo_busca = entry_busca_venda.get()
+        vendas = search_vendas_nao_pagas(termo_busca)
+        
+        for item in tabela_vendas.get_children():
+            tabela_vendas.delete(item)
+            
+        if vendas:
+            for venda in vendas:
+                # Fetch client name for display
+                cliente_nome = ""
+                if venda.cliente: # Check if client relationship is loaded
+                    cliente_nome = venda.cliente.nome_cliente
+                
+                tabela_vendas.insert(parent='', index='end', values=(
+                    venda.id,
+                    venda.numero_notinha,
+                    venda.data_venda.strftime('%d/%m/%Y'),
+                    venda.valor_total,
+                    cliente_nome,
+                    venda.data_vencimento.strftime('%d/%m/%Y') if venda.data_vencimento else 'N/A'
+                ))
+        else:
+            messagebox.showinfo("Busca de Vendas", "Nenhuma venda não paga encontrada com o termo de busca.")
+
+    def handle_marcar_como_paga():
+        item_selecionado_id = tabela_vendas.selection()
+        if not item_selecionado_id:
+            messagebox.showwarning("Seleção Necessária", "Por favor, selecione uma venda na tabela para marcar como paga.")
+            return
+        
+        id_da_linha = item_selecionado_id[0]
+        venda_id = tabela_vendas.item(id_da_linha, 'values')[0] # Get the ID from the first column
+        
+        confirmar = messagebox.askyesno("Confirmar Pagamento", f"Tem certeza que deseja marcar a venda ID {venda_id} como paga?")
+        if confirmar:
+            from vendas_operation import marcar_venda_como_paga # Import here to avoid circular dependency
+            resultado = marcar_venda_como_paga(int(venda_id))
+            if resultado:
+                messagebox.showinfo("Sucesso", f"Venda ID {venda_id} marcada como paga com sucesso!")
+                handle_buscar_vendas() # Refresh the list
+            else:
+                messagebox.showerror("Erro", f"Não foi possível marcar a venda ID {venda_id} como paga.")
+
+    # UI Elements
+    label_busca_venda = ttk.Label(container, text="Buscar Venda (Notinha ou Cliente):")
+    entry_busca_venda = ttk.Entry(container, style='Padded.TEntry')
+    botao_buscar_venda = ttk.Button(container, text="Buscar", command=handle_buscar_vendas)
+
+    colunas = ('id', 'notinha', 'data_venda', 'valor_total', 'cliente', 'data_vencimento')
+    tabela_vendas = ttk.Treeview(container, columns=colunas, show='headings', height=10)
+    tabela_vendas.heading('id', text='ID')
+    tabela_vendas.heading('notinha', text='Notinha')
+    tabela_vendas.heading('data_venda', text='Data Venda')
+    tabela_vendas.heading('valor_total', text='Valor Total')
+    tabela_vendas.heading('cliente', text='Cliente')
+    tabela_vendas.heading('data_vencimento', text='Vencimento')
+
+    tabela_vendas.column('id', width=50)
+    tabela_vendas.column('notinha', width=80)
+    tabela_vendas.column('data_venda', width=100)
+    tabela_vendas.column('valor_total', width=100)
+    tabela_vendas.column('cliente', width=200)
+    tabela_vendas.column('data_vencimento', width=100)
+
+    botao_marcar_paga = ttk.Button(container, text="Marcar como Paga", command=handle_marcar_como_paga)
+
+    # Layout
+    label_busca_venda.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+    entry_busca_venda.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+    botao_buscar_venda.grid(row=0, column=2, padx=5, pady=5)
+
+    tabela_vendas.grid(row=1, column=0, columnspan=3, padx=5, pady=5, sticky="nsew")
+    
+    # Add a scrollbar to the Treeview
+    scrollbar = ttk.Scrollbar(container, orient="vertical", command=tabela_vendas.yview)
+    scrollbar.grid(row=1, column=3, sticky="ns")
+    tabela_vendas.configure(yscrollcommand=scrollbar.set)
+
+    botao_marcar_paga.grid(row=2, column=0, columnspan=3, pady=10)
+
+    # Configure grid to expand with window
+    container.grid_rowconfigure(1, weight=1)
+    container.grid_columnconfigure(1, weight=1)
+
+    # Initial load of unpaid sales
+    handle_buscar_vendas()
+
+
+
+def abrir_formulario_relatorios_vendas(container):
+    print("DEBUG: Abrindo formulário de relatórios de vendas...")
+    for widget in container.winfo_children():
+        widget.destroy()
+    print(f"DEBUG: Container após destroy: {len(container.winfo_children())} widgets")
+
+    # Date pickers
+    label_data_inicio = ttk.Label(container, text="Data Início:")
+    entry_data_inicio = DateEntry(container, date_pattern='dd/MM/yyyy')
+    label_data_fim = ttk.Label(container, text="Data Fim:")
+    entry_data_fim = DateEntry(container, date_pattern='dd/MM/yyyy')
+
+    # Vendedor selection
+    label_vendedor = ttk.Label(container, text="Vendedor:")
+    vendedor_selecionado = tk.StringVar()
+    objetos_vendedor = get_todos_vendedores()
+    mapa_vendedores = {v.nome_vendedor: v.id for v in objetos_vendedor}
+    lista_vendedores = ["Todos"] + list(mapa_vendedores.keys())
+    combo_vendedor = ttk.Combobox(container, textvariable=vendedor_selecionado, values=lista_vendedores, state='readonly')
+    combo_vendedor.set("Todos")
+
+    # Cliente search
+    label_cliente = ttk.Label(container, text="Cliente (Nome ou ID):")
+    entry_cliente_busca = ttk.Entry(container)
+    cliente_id_selecionado = None # To store the ID of the selected client
+
+    def handle_buscar_cliente_relatorio():
+        nonlocal cliente_id_selecionado
+        termo_busca = entry_cliente_busca.get()
+        if not termo_busca:
+            cliente_id_selecionado = None
+            messagebox.showinfo("Busca de Cliente", "Nenhum termo de busca fornecido. O relatório incluirá todos os clientes.")
+            return
+
+        if termo_busca.isdigit():
+            # Assuming direct ID search for simplicity, or you'd need a get_client_by_id function
+            cliente_id_selecionado = int(termo_busca)
+            messagebox.showinfo("Busca de Cliente", f"Cliente ID {cliente_id_selecionado} selecionado.")
+        else:
+            resultados = search_clientes_por_nome(termo_busca)
+            if resultados:
+                if len(resultados) == 1:
+                    cliente_id_selecionado = resultados[0].id
+                    messagebox.showinfo("Busca de Cliente", f"Cliente '{resultados[0].nome_cliente}' (ID: {resultados[0].id}) selecionado.")
+                else:
+                    # For multiple results, a more complex UI would be needed to select one
+                    messagebox.showwarning("Múltiplos Clientes", "Múltiplos clientes encontrados. Por favor, refine a busca ou insira o ID exato.")
+                    cliente_id_selecionado = None
+            else:
+                cliente_id_selecionado = None
+                messagebox.showinfo("Busca de Cliente", "Cliente não encontrado.")
+
+    botao_buscar_cliente_relatorio = ttk.Button(container, text="Buscar Cliente", command=handle_buscar_cliente_relatorio)
+
+    # Treeview for results
+    colunas = ('id', 'notinha', 'data_venda', 'valor_total', 'cliente', 'vendedor', 'pago', 'data_vencimento')
+    tabela_relatorio = ttk.Treeview(container, columns=colunas, show='headings', height=15)
+    tabela_relatorio.heading('id', text='ID')
+    tabela_relatorio.heading('notinha', text='Notinha')
+    tabela_relatorio.heading('data_venda', text='Data Venda')
+    tabela_relatorio.heading('valor_total', text='Valor Total')
+    tabela_relatorio.heading('cliente', text='Cliente')
+    tabela_relatorio.heading('vendedor', text='Vendedor')
+    tabela_relatorio.heading('pago', text='Pago')
+    tabela_relatorio.heading('data_vencimento', text='Vencimento')
+
+    tabela_relatorio.column('id', width=50)
+    tabela_relatorio.column('notinha', width=80)
+    tabela_relatorio.column('data_venda', width=100)
+    tabela_relatorio.column('valor_total', width=100)
+    tabela_relatorio.column('cliente', width=150)
+    tabela_relatorio.column('vendedor', width=150)
+    tabela_relatorio.column('pago', width=60)
+    tabela_relatorio.column('data_vencimento', width=100)
+
+    # Summary label
+    label_total_vendas = ttk.Label(container, text="Total de Vendas no Período: R$ 0.00")
+
+    def preencher_tabela_vendas(vendas):
+        for item in tabela_relatorio.get_children():
+            tabela_relatorio.delete(item)
+        
+        total_valor = 0.0
+        for venda in vendas:
+            cliente_nome = venda.cliente.nome_cliente if venda.cliente else "N/A"
+            vendedor_nome = venda.vendedor.nome_vendedor if venda.vendedor else "N/A"
+            tabela_relatorio.insert(parent='', index='end', values=(
+                venda.id,
+                venda.numero_notinha,
+                venda.data_venda.strftime('%d/%m/%Y'),
+                f"R$ {venda.valor_total:.2f}",
+                cliente_nome,
+                vendedor_nome,
+                "Sim" if venda.pago else "Não",
+                venda.data_vencimento.strftime('%d/%m/%Y') if venda.data_vencimento else 'N/A'
+            ))
+            total_valor += float(venda.valor_total)
+        label_total_vendas.config(text=f"Total de Vendas no Período: R$ {total_valor:.2f}")
+
+
+    def gerar_relatorio_vendas_vendedor():
+        start_date = entry_data_inicio.get_date()
+        end_date = entry_data_fim.get_date()
+        vendedor_nome = vendedor_selecionado.get()
+        
+        vendedor_id = mapa_vendedores.get(vendedor_nome) if vendedor_nome != "Todos" else None
+        
+        vendas = get_sales_by_period_and_vendedor(start_date, end_date, vendedor_id)
+        preencher_tabela_vendas(vendas)
+
+    def gerar_relatorio_vendas_cliente():
+        start_date = entry_data_inicio.get_date()
+        end_date = entry_data_fim.get_date()
+        
+        if cliente_id_selecionado is None:
+            messagebox.showwarning("Seleção Necessária", "Por favor, busque e selecione um cliente para este relatório.")
+            return
+
+        vendas = get_sales_by_period_and_cliente(start_date, end_date, cliente_id_selecionado)
+        preencher_tabela_vendas(vendas)
+
+    def gerar_relatorio_total_vendas():
+        start_date = entry_data_inicio.get_date()
+        end_date = entry_data_fim.get_date()
+        total = get_total_sales_by_period(start_date, end_date)
+        messagebox.showinfo("Total de Vendas", f"O valor total de vendas no período é: R$ {total:.2f}")
+
+    def gerar_relatorio_vendas_pagas_nao_pagas():
+        if cliente_id_selecionado is None:
+            messagebox.showwarning("Seleção Necessária", "Por favor, busque e selecione um cliente para este relatório.")
+            return
+        
+        vendas_pagas = get_paid_unpaid_sales_by_client(cliente_id_selecionado, True)
+        vendas_nao_pagas = get_paid_unpaid_sales_by_client(cliente_id_selecionado, False)
+
+        preencher_tabela_vendas(vendas_pagas + vendas_nao_pagas) # Display all for the client
+        
+        total_pagas = sum(float(v.valor_total) for v in vendas_pagas)
+        total_nao_pagas = sum(float(v.valor_total) for v in vendas_nao_pagas)
+
+        messagebox.showinfo(
+            "Vendas Pagas/Não Pagas por Cliente",
+            f"Cliente: {entry_cliente_busca.get()}\n"
+            f"Total de Vendas Pagas: R$ {total_pagas:.2f}\n"
+            f"Total de Vendas Não Pagas: R$ {total_nao_pagas:.2f}"
+        )
+
+
+    # Layout
+    row_counter = 0
+    label_data_inicio.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
+    entry_data_inicio.grid(row=row_counter, column=1, padx=5, pady=5)
+    label_data_fim = ttk.Label(container, text="Data Fim:")
+    entry_data_fim = DateEntry(container, date_pattern='dd/MM/yyyy')
+    row_counter += 1
+    label_data_fim.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
+    entry_data_fim.grid(row=row_counter, column=1, padx=5, pady=5)
+    row_counter += 1
+
+    label_vendedor.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
+    combo_vendedor.grid(row=row_counter, column=1, padx=5, pady=5)
+    row_counter += 1
+
+    label_cliente.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
+    entry_cliente_busca.grid(row=row_counter, column=1, padx=5, pady=5)
+    botao_buscar_cliente_relatorio.grid(row=row_counter, column=2, padx=5, pady=5)
+    row_counter += 1
+
+    tabela_relatorio.grid(row=row_counter, column=0, columnspan=4, padx=5, pady=5, sticky="nsew")
+    scrollbar_relatorio = ttk.Scrollbar(container, orient="vertical", command=tabela_relatorio.yview)
+    scrollbar_relatorio.grid(row=row_counter, column=4, sticky="ns")
+    tabela_relatorio.configure(yscrollcommand=scrollbar_relatorio.set)
+    row_counter += 1
+
+    label_total_vendas.grid(row=row_counter, column=0, columnspan=4, padx=5, pady=5, sticky="w")
+
+    container.grid_rowconfigure(tabela_relatorio.grid_info()['row'], weight=1)
+    container.grid_columnconfigure(1, weight=1)
+    row_counter += 1
+
+    botao_gerar_relatório = ttk.Button(container, text="Gerar Relatório", command=handle_buscar_cliente_relatorio)
+
+
+
+def abrir_formulario_clientes(container):
+    for widget in container.winfo_children():
+         widget.destroy()
 
     def handle_salvar_cliente():
         cliente_nome = entry_cliente.get()
@@ -230,7 +507,7 @@ def abrir_formulario_pagamentos(container):
     def handle_busca_fornecedor():
         termo_busca = entry_buscar_fornecedor.get()
         resultados = search_fornecedores_por_nome(termo_busca)
-        # Limpa a tabela de resultados antigos
+
         for item in tabela_fornecedores.get_children():
             tabela_fornecedores.delete(item)
             
@@ -238,7 +515,7 @@ def abrir_formulario_pagamentos(container):
             for fornecedor in resultados:
                 tabela_fornecedores.insert(parent='', index='end', values=(
                     fornecedor.id, fornecedor.nome_fornecedor, fornecedor.cpf_cnpj, fornecedor.telefone, fornecedor.endereco
-                ))
+            ))
 
     dados_fornecedor_selecionado = {}
 
@@ -384,6 +661,7 @@ def abrir_formulario_fornecedores(container):
         salvar_fornecedor = add_fornecedor(dados_fornecedor)
         if salvar_fornecedor:
             messagebox.showinfo("Sucesso", f"Fornecedor ID {salvar_fornecedor.id} salvo com sucesso.")
+            limpar_formulario_fornecedor()
         else:
             messagebox.showerror("Erro de Banco de Dados", "Não foi possível salvar o fornecedor.")
 
@@ -437,6 +715,7 @@ def abrir_janela_principal():
     
     menu_vendas = tk.Menu(barra_de_menu, tearoff=0)
     menu_vendas.add_command(label="Registrar Nova Venda", command=lambda: abrir_formulario_vendas(frame_principal))
+    menu_vendas.add_command(label="Vendas Não Pagas", command=lambda: abrir_formulario_vendas_nao_pagas(frame_principal))
     barra_de_menu.add_cascade(label="Vendas", menu=menu_vendas)
     menu_cadastro = tk.Menu(barra_de_menu, tearoff=0)
     menu_cadastro.add_command(label="Clientes", command=lambda: abrir_formulario_clientes(frame_principal))
@@ -445,6 +724,11 @@ def abrir_janela_principal():
     menu_financeiro = tk.Menu(barra_de_menu, tearoff=0)
     menu_financeiro.add_command(label="Adicionar Contas a Pagar", command=lambda: abrir_formulario_pagamentos(frame_principal))
     barra_de_menu.add_cascade(label="Financeiro", menu=menu_financeiro)
+    
+    menu_relatorios = tk.Menu(barra_de_menu, tearoff=0)
+    menu_relatorios.add_command(label="Vendas", command=lambda: abrir_formulario_relatorios_vendas(frame_principal))
+    barra_de_menu.add_cascade(label="Relatórios", menu=menu_relatorios)
+
     janela_principal.protocol("WM_DELETE_WINDOW", janela.destroy)
 
 def handle_login():
