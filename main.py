@@ -9,6 +9,12 @@ from vendas_operation import add_venda, get_sales_by_period_and_vendedor, get_sa
 from cliente_operations import add_cliente
 from pagamento_operations import add_pagamento
 from fornecedor_operations import add_fornecedor
+import logging
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 def abrir_formulario_vendas(container):
     for widget in container.winfo_children():

@@ -1,5 +1,6 @@
 from models import Pagamento
 from database import SessionLocal
+import logging
 
 def add_pagamento(dados_pagamento: dict):
     
@@ -16,6 +17,8 @@ def add_pagamento(dados_pagamento: dict):
             db.add(novo_pagamento)
             db.commit()
             db.refresh(novo_pagamento)
+            logging.info(f"Pagamento '{novo_pagamento.numero_nota}' (ID: {novo_pagamento.id}) adicionado com sucesso.")
             return novo_pagamento
     except Exception as e:
+        logging.error(f"Erro ao adicionar pagamento '{dados_pagamento['numero_nota']}': {e}")
         return None

@@ -1,6 +1,7 @@
 from models import Usuario
 from passlib.context import CryptContext
 from database import SessionLocal
+import logging
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -18,8 +19,10 @@ def add_user(nome_usuario, senha, cargo):
             db.add(novo_usuario)
             db.commit()
             db.refresh(novo_usuario)
+            logging.info(f"Usuário '{novo_usuario.nome_usuario}' (ID: {novo_usuario.id}) adicionado com sucesso.")
             return novo_usuario
     except Exception as e:
+        logging.error(f"Erro ao tentar cadastrar o usuário '{nome_usuario}': {e}")
         return None
 
 def verify_user(nome_usuario, senha):
@@ -29,17 +32,18 @@ def verify_user(nome_usuario, senha):
         
             usuario = db.query(Usuario).filter(Usuario.nome_usuario == nome_usuario).first()
             if usuario is None:
-                print("Usuário não encontrado.")
+                logging.warning(f"Tentativa de login falhou: usuário '{nome_usuario}' não encontrado.")
                 return None
             else:
                 senha_valida = pwd_context.verify(senha, usuario.senha_hash)
                 if senha_valida:
-                    print(f"Usuário '{usuario.nome_usuario}' autenticado com sucesso!")
+                    logging.info(f"Usuário '{usuario.nome_usuario}' autenticado com sucesso!")
                     return usuario
                 else:
-                    print("Senha incorreta.")
+                    logging.warning(f"Tentativa de login falhou para o usuário '{nome_usuario}': senha incorreta.")
                     return None
     except Exception as e:
+        logging.error(f"Erro no banco de dados ao tentar verificar o usuário '{nome_usuario}': {e}")
         return None
         
 if __name__ == "__main__":

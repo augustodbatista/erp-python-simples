@@ -1,7 +1,6 @@
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine
 from models import Cliente
 from database import SessionLocal
+import logging
 
 def add_cliente(dados_cliente: dict):
 
@@ -16,6 +15,8 @@ def add_cliente(dados_cliente: dict):
             db.add(novo_cliente)
             db.commit()
             db.refresh(novo_cliente)
+            logging.info(f"Cliente '{novo_cliente.nome_cliente}' (ID: {novo_cliente.id}) adicionado com sucesso.")
             return novo_cliente
     except Exception as e:
+        logging.error(f"Erro ao adicionar cliente '{dados_cliente['nome_cliente']}': {e}")
         return None

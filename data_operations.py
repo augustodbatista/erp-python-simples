@@ -1,6 +1,7 @@
 from sqlalchemy.orm import joinedload
 from database import SessionLocal
 from models import Vendedor, Cliente, Fornecedor, Pagamento, Venda
+import logging
 
 
 def get_todos_vendedores():
@@ -9,6 +10,7 @@ def get_todos_vendedores():
             vendedores = db.query(Vendedor).all()
             return vendedores
     except Exception as e:
+        logging.error(f"Erro ao buscar todos os vendedores: {e}")
         return []
 
 def get_todos_clientes():
@@ -17,6 +19,7 @@ def get_todos_clientes():
             clientes = db.query(Cliente).all()
             return clientes
     except Exception as e:
+        logging.error(f"Erro ao buscar todos os cliente: {e}")
         return []
 
 def search_clientes_por_nome(termo_busca: str):
@@ -25,6 +28,7 @@ def search_clientes_por_nome(termo_busca: str):
             search_clientes = db.query(Cliente).filter(Cliente.nome_cliente.ilike(f'%{termo_busca}%')).all()
             return search_clientes
     except Exception as e:
+        logging.error(f"Erro ao buscar cliente pelo termo'{termo_busca}': {e}")
         return []
 
 def search_fornecedores_por_nome(termo_busca: str):
@@ -33,6 +37,7 @@ def search_fornecedores_por_nome(termo_busca: str):
             search_fornecedores = db.query(Fornecedor).filter(Fornecedor.nome_fornecedor.ilike(f'%{termo_busca}%')).all()
             return search_fornecedores
     except Exception as e:
+        logging.error(f"Erro ao buscar fornecedor pelo termo'{termo_busca}': {e}")
         return []
 
 
@@ -51,6 +56,7 @@ def search_vendas_nao_pagas(termo_busca: str):
             vendas = query.all()
             return vendas
     except Exception as e:
+        logging.error(f"Erro ao buscar vendas pelo termo'{termo_busca}': {e}")
         return []
 
 def get_pagamentos_por_periodo(start_date, end_date):
@@ -60,4 +66,5 @@ def get_pagamentos_por_periodo(start_date, end_date):
             pagamentos_periodo = query.all()
             return pagamentos_periodo
     except Exception as e:
+        logging.error(f"Erro ao buscar pagamentos pela data '{start_date, end_date}': {e}")
         return []
