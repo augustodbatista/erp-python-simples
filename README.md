@@ -26,7 +26,11 @@ Um projeto de aprendizado para a construção de um sistema de ERP de desktop do
 
 - **Módulo de Vendas e Pagamentos:**
   - Formulário completo e estilizado para registro de novas vendas e pagamentos.
-  - Uso
+  - Uso de componentes de interface avançados como calendário (`tkcalendar`) e busca dinâmica com `Treeview`.
+  - Funcionalidade para consultar vendas não pagas e marcá-las como pagas.
+  
+- **Módulo de Relatórios (Em construção):**
+  - Interface com filtros dinâmicos para gerar relatórios de vendas por período, vendedor ou cliente.
 
   ------------------------------------------------------------
 
