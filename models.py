@@ -46,7 +46,7 @@ class Venda(Base):
     data_venda = Column(Date, nullable=False)
     valor_total = Column(Numeric(10,2), nullable=False)
     pago = Column(Boolean, nullable=False, default=False)
-    forma_pagamento = Column(String(50), nullable=False)
+    forma_pagamento = Column(String(150), nullable=False)
     data_vencimento = Column(Date)
     cliente_id = Column(Integer, ForeignKey('clientes.id'), nullable=False)
     vendedor_id = Column(Integer, ForeignKey('vendedores.id'), nullable=False)
@@ -76,6 +76,7 @@ class Pagamento(Base):
     data_vencimento = Column(Date, nullable=False)
     valor_nota = Column(Numeric(10,2), nullable=False)
     data_pagamento = Column(Date)
+    forma_pagamento = Column(String(100))
     fornecedor_id = Column(Integer, ForeignKey('fornecedores.id'), nullable=False)
     fornecedor = relationship("Fornecedor", back_populates="pagamentos")
     def __repr__(self):

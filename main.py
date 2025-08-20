@@ -223,7 +223,8 @@ def abrir_formulario_vendas_nao_pagas(container):
         confirmar = messagebox.askyesno("Confirmar Pagamento", f"Tem certeza que deseja marcar a venda ID {venda_id} como paga?")
         if confirmar:
             from vendas_operation import marcar_venda_como_paga # Import here to avoid circular dependency
-            resultado = marcar_venda_como_paga(int(venda_id))
+            forma_pagamento_texto = entry_forma_pagamento.get()
+            resultado = marcar_venda_como_paga(int(venda_id), forma_pagamento_texto)
             if resultado:
                 messagebox.showinfo("Sucesso", f"Venda ID {venda_id} marcada como paga com sucesso!")
                 handle_buscar_vendas() # Refresh the list
@@ -251,27 +252,34 @@ def abrir_formulario_vendas_nao_pagas(container):
     tabela_vendas.column('cliente', width=200)
     tabela_vendas.column('data_vencimento', width=100)
 
+    label_forma_pagamento = ttk.Label(container, text="Forma de Pagamento")
+    entry_forma_pagamento = ttk.Entry(container, style="Padded.TEntry")
+
     botao_marcar_paga = ttk.Button(container, text="Marcar como Paga", command=handle_marcar_como_paga)
 
     # Layout
-    label_busca_venda.grid(row=0, column=0, padx=5, pady=5, sticky="w")
-    entry_busca_venda.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-    botao_buscar_venda.grid(row=0, column=2, padx=5, pady=5)
+    row_counter = 0
+    label_busca_venda.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
+    entry_busca_venda.grid(row=row_counter, column=1, padx=5, pady=5, sticky="ew")
+    botao_buscar_venda.grid(row=row_counter, column=2, padx=5, pady=5)
+    row_counter += 1
 
-    tabela_vendas.grid(row=1, column=0, columnspan=3, padx=5, pady=5, sticky="nsew")
-    
+    tabela_vendas.grid(row=row_counter, column=0, columnspan=3, padx=5, pady=5, sticky="nsew")
     # Add a scrollbar to the Treeview
     scrollbar = ttk.Scrollbar(container, orient="vertical", command=tabela_vendas.yview)
-    scrollbar.grid(row=1, column=3, sticky="ns")
+    scrollbar.grid(row=row_counter, column=3, sticky="ns")
     tabela_vendas.configure(yscrollcommand=scrollbar.set)
+    row_counter += 1
 
-    botao_marcar_paga.grid(row=2, column=0, columnspan=3, pady=10)
+    label_forma_pagamento.grid(row=row_counter, column=0, padx=(5,0), pady=5, sticky='w')
+    entry_forma_pagamento.grid(row=row_counter, column=1, columnspan=4, sticky='ew')
+    botao_marcar_paga.grid(row=row_counter, column=5, pady=10, padx=5)
 
     # Configure grid to expand with window
     container.grid_rowconfigure(1, weight=1)
     container.grid_columnconfigure(1, weight=1)
 
-    # Initial load of unpaid sales
+
     handle_buscar_vendas()
 
 def abrir_formulario_relatorios_vendas(container):
@@ -447,6 +455,7 @@ def abrir_formulario_relatorio_pagamentos(container):
                     pagamento.data_vencimento.strftime('%d/%m/%Y'),
                     pagamento.valor_nota,
                     pagamento.data_pagamento.strftime('%d/%m/%Y')if pagamento.data_pagamento else 'N/A',
+                    pagamento.forma_pagamento if pagamento.forma_pagamento else 'N/A',
                     pagamento.fornecedor.nome_fornecedor
                 )
 
@@ -472,6 +481,7 @@ def abrir_formulario_relatorio_pagamentos(container):
     tabela_relatorio.heading('valor_nota', text='Valor Nota')
     tabela_relatorio.heading('fornecedor', text='Fornecedor')
     tabela_relatorio.heading('data_pagamento', text='Data Pagamento')
+    tabela_relatorio.heading('forma_pagamento', text="Forma de Pagamento")
 
     tabela_relatorio.column('id', width=50)
     tabela_relatorio.column('numero_nota', width=80)
@@ -479,6 +489,7 @@ def abrir_formulario_relatorio_pagamentos(container):
     tabela_relatorio.column('valor_nota', width=100)
     tabela_relatorio.column('fornecedor', width=150)
     tabela_relatorio.column('data_pagamento', width=100)
+    tabela_relatorio.column('forma_pagamento', width=120)
 
     # Layout
 
@@ -503,8 +514,6 @@ def abrir_formulario_relatorio_pagamentos(container):
     scrollbar_relatorio.grid(row=row_counter, column=4, sticky="ns")
     tabela_relatorio.configure(yscrollcommand=scrollbar_relatorio.set)
     row_counter += 1
-
-    
 
 def abrir_formulario_clientes(container):
     for widget in container.winfo_children():
@@ -627,6 +636,7 @@ def abrir_formulario_pagamentos(container):
         entry_valor.delete(0, tk.END)
         entry_data_pagamento.delete(0, tk.END)
         entry_buscar_fornecedor.delete(0, tk.END)
+        entry_forma_pagamento.delete(0, tk.END)
 
 
     label_buscar_fornecedor = ttk.Label(container, text="Buscar Fornecedor:")
@@ -660,34 +670,41 @@ def abrir_formulario_pagamentos(container):
     entry_data_pagamento = DateEntry(container, date_pattern='dd/MM/yyyy', style='Padded.TEntry')
     entry_data_pagamento.delete(0, tk.END)
 
+    label_forma_pagamento = ttk.Label(container, text="Forma de Pagamento")
+    entry_forma_pagamento = ttk.Entry(container, style='Padded.TEntry')
+
     botao_salvar = ttk.Button(container, text="Salvar", command=handle_salvar_pagamento) # FALTA COMMAND
 
-    # Linha 0 -----
-    label_buscar_fornecedor.grid(row=0, column=0, padx=5, pady=5, sticky="w")
-    entry_buscar_fornecedor.grid(row=0, column=1, padx=5, pady=5)
-    botao_buscar_fornecedor.grid(row=0, column=2, padx=5, pady=5)
+    row_counter = 0
+    label_buscar_fornecedor.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
+    entry_buscar_fornecedor.grid(row=row_counter, column=1, padx=5, pady=5)
+    botao_buscar_fornecedor.grid(row=row_counter, column=2, padx=5, pady=5)
+    row_counter += 1
 
-    # Linha 1 -----
-    tabela_fornecedores.grid(row=1, column=0, columnspan=4, padx=5, pady=5, sticky="ew")
+    tabela_fornecedores.grid(row=row_counter, column=0, columnspan=4, padx=5, pady=5, sticky="ew")
+    row_counter += 1
     
-    #Linha 2 -----
-    label_fornecedor_selecionado.grid(row=2, column=0, columnspan=4, padx=5, pady=5, sticky="w")
+    label_fornecedor_selecionado.grid(row=row_counter, column=0, columnspan=4, padx=5, pady=5, sticky="w")
     tabela_fornecedores.bind('<<TreeviewSelect>>', handle_selecao_fornecedor)
+    row_counter += 1
+    
+    label_numero_nota.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
+    entry_numero_nota.grid(row=row_counter, column=1, padx=5, pady=5)
+    label_data_vencimento.grid(row=row_counter, column=2, padx=5, pady=5, sticky='w')
+    entry_data_vencimento.grid(row=row_counter, column=3, padx=5, pady=5)
+    row_counter += 1
 
-    # Linha 3 -----
-    label_numero_nota.grid(row=3, column=0, padx=5, pady=5, sticky="w")
-    entry_numero_nota.grid(row=3, column=1, padx=5, pady=5)
-    label_data_vencimento.grid(row=3, column=2, padx=5, pady=5, sticky='w')
-    entry_data_vencimento.grid(row=3, column=3, padx=5, pady=5)
+    label_valor.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
+    entry_valor.grid(row=row_counter, column=1, padx=5, pady=5)
+    label_data_pagamento.grid(row=row_counter, column=2, padx=5, pady=5, sticky='w')
+    entry_data_pagamento.grid(row=row_counter, column=3, padx=5, pady=5)
+    row_counter += 1
 
-    # Linha 4 -----
-    label_valor.grid(row=4, column=0, padx=5, pady=5, sticky="w")
-    entry_valor.grid(row=4, column=1, padx=5, pady=5)
-    label_data_pagamento.grid(row=4, column=2, padx=5, pady=5, sticky='w')
-    entry_data_pagamento.grid(row=4, column=3, padx=5, pady=5)
+    label_forma_pagamento.grid(row=row_counter, column=0, padx=5, pady=5, sticky='w')
+    entry_forma_pagamento.grid(row= row_counter, column=1,padx=5, pady=5)
+    row_counter += 1
 
-    # Linha 5 -----
-    botao_salvar.grid(row=5, column=0, padx=4, pady=20)
+    botao_salvar.grid(row=row_counter, column=0, padx=4, pady=20)
 
 def abrir_formulario_fornecedores(container):
     for widget in container.winfo_children():

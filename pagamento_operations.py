@@ -8,7 +8,8 @@ def add_pagamento(dados_pagamento: dict):
         numero_nota=dados_pagamento['numero_nota'],
         data_vencimento=dados_pagamento['data_vencimento'],
         valor_nota=dados_pagamento['valor_nota'],
-        data_pagamento=dados_pagamento.get('data_pagamento'), # .get() é mais seguro para campos opcionais
+        data_pagamento=dados_pagamento.get('data_pagamento'),
+        forma_pagamento=dados_pagamento.get('forma_pagamento'),
         fornecedor_id=dados_pagamento['fornecedor_id']
     )
 

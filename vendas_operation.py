@@ -40,7 +40,7 @@ def get_vendas_nao_pagas():
         logging.error(f"Erro ao buscar todas vendas nao pagas: {e}")
         return []
 
-def marcar_venda_como_paga(venda_id: int):
+def marcar_venda_como_paga(venda_id: int, forma_pagamento: str):
 
     try:
         with SessionLocal() as db:
@@ -48,6 +48,7 @@ def marcar_venda_como_paga(venda_id: int):
             venda = db.query(Venda).filter(Venda.id == venda_id).first()
             if venda:
                 venda.pago = True
+                venda.forma_pagamento = forma_pagamento
                 db.commit()
                 db.refresh(venda)
                 logging.info(f"Venda {venda_id} marcada como paga.")
