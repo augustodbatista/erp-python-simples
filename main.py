@@ -4,7 +4,7 @@ from tkcalendar import DateEntry
 from ttkthemes import ThemedTk
 from datetime import date
 from user_operations import verify_user
-from data_operations import get_todos_vendedores, get_todos_clientes, search_clientes_por_nome, search_fornecedores_por_nome, search_vendas_nao_pagas, get_pagamentos_por_periodo
+from data_operations import get_todos_vendedores, get_todos_clientes, search_clientes_por_nome, search_fornecedores_por_nome, search_vendas_nao_pagas, get_pagamentos_por_periodo, get_pagamentos_nao_pagos
 from vendas_operation import add_venda, get_sales_by_period_and_vendedor, get_sales_by_period_and_cliente, get_total_sales_by_period, get_paid_unpaid_sales_by_client
 from cliente_operations import add_cliente
 from pagamento_operations import add_pagamento
@@ -19,6 +19,8 @@ logging.basicConfig(
 def abrir_formulario_vendas(container):
     for widget in container.winfo_children():
         widget.destroy()
+
+        
 
     def handle_salvar_venda():
         numero_notinha = entry_notinha.get()
@@ -706,6 +708,99 @@ def abrir_formulario_pagamentos(container):
 
     botao_salvar.grid(row=row_counter, column=0, padx=4, pady=20)
 
+def abrir_formulario_editar_pagamentos(container):
+    for widget in container.winfo_children():
+        widget.destroy()
+    
+    def recarregar_tabela():
+        pagamentos_nao_pagos = get_pagamentos_nao_pagos()
+        for item in tabela_pagamentos.get_children():
+            tabela_pagamentos.delete(item)
+    
+        if pagamentos_nao_pagos:
+            for pagamento in pagamentos_nao_pagos:
+                tabela_pagamentos.insert(parent="", index='end', values=(
+                    pagamento.id,
+                    pagamento.numero_nota,
+                    pagamento.data_vencimento.strftime('%d/%m/%Y'),
+                    pagamento.valor_nota,
+                    pagamento.data_pagamento.strftime('%d/%m/%Y') if pagamento.data_pagamento else 'N/A',
+                    pagamento.fornecedor.nome_fornecedor
+                ))
+
+
+    def handle_salvar_alteracoes_pagamentos():
+        item_selecionado_id = tabela_pagamentos.selection()
+
+        if not item_selecionado_id:
+            messagebox.showwarning("Seleção Necessária", "Por favor, selecione um pagamento na tabela para marcar como paga.")
+            return
+        
+        id_da_linha = item_selecionado_id[0]
+        pagamento_id = tabela_pagamentos.item(id_da_linha, 'values')[0]
+
+        confirmar = messagebox.askyesno("Confirmar Pagamento", f"Tem certeza que deseja marcar a pagamento ID {pagamento_id} como paga?")
+        if confirmar:
+            from pagamento_operations import atualizar_pagamento # Import here to avoid circular dependency
+            forma_pagamento_texto = entry_forma_pagamento.get()
+            data_pagamento_texto = entry_data_pagamento.get_date()
+            novos_dados = {
+                'data_pagamento': entry_data_pagamento.get_date(),
+                'forma_pagamento': entry_forma_pagamento.get()
+            }
+            resultado = atualizar_pagamento(int(pagamento_id), novos_dados)
+            if resultado:
+                messagebox.showinfo("Sucesso", f"Pagamento ID {pagamento_id} marcada como paga com sucesso!")
+                recarregar_tabela()
+                
+            else:
+                messagebox.showerror("Erro", f"Não foi possível marcar a pagamento ID {pagamento_id} como paga.")
+    
+    label_data_pagamento = ttk.Label(container, text="Data de Pagamento",)
+    entry_data_pagamento = DateEntry(container, style="Padded.TEntry")
+    label_forma_pagamento = ttk.Label(container, text="Forma de Pagamento:")
+    entry_forma_pagamento = ttk.Entry(container, style="Padded.TEntry")
+    botao_salvar_pagamentos = ttk.Button(container, text="Salvar Alterações", command=handle_salvar_alteracoes_pagamentos)
+
+    colunas = ('id', 'numero_nota', 'data_vencimento', 'valor_nota', 'data_pagamento', 'forma_pagamento', 'fornecedor')
+    tabela_pagamentos = ttk.Treeview(container, columns=colunas, show='headings', height=15)
+    tabela_pagamentos.heading('id', text='ID')
+    tabela_pagamentos.heading('numero_nota', text='Número Nota')
+    tabela_pagamentos.heading('data_vencimento', text='Data Vencimento')
+    tabela_pagamentos.heading('valor_nota', text='Valor Nota')
+    tabela_pagamentos.heading('data_pagamento', text='Data de Pagamento')
+    tabela_pagamentos.heading('forma_pagamento', text='Forma de Pagamento')
+    tabela_pagamentos.heading('fornecedor', text='Fornecedor')
+
+    tabela_pagamentos.column('id', width=50)
+    tabela_pagamentos.column('numero_nota', width=80)
+    tabela_pagamentos.column('data_vencimento', width=100)
+    tabela_pagamentos.column('valor_nota', width=100)
+    tabela_pagamentos.column('data_pagamento', width=150)
+    tabela_pagamentos.column('forma_pagamento', width=150)
+    tabela_pagamentos.column('fornecedor', width=60)
+
+    # Layout
+    row_counter = 0
+    tabela_pagamentos.grid(row=row_counter, column=0,columnspan=3, padx=5, pady=5, sticky="nsew")
+    # Add a scrollbar to the Treeview
+    scrollbar = ttk.Scrollbar(container, orient="vertical", command=tabela_pagamentos.yview)
+    scrollbar.grid(row=row_counter, column=3, sticky="ns")
+    tabela_pagamentos.configure(yscrollcommand=scrollbar.set)
+    row_counter += 1
+
+    label_data_pagamento.grid(row=row_counter, column=0, padx=5, pady=5, sticky='w')
+    entry_data_pagamento.grid(row=row_counter, column=1, padx=5, pady=5)
+    row_counter += 1
+
+    label_forma_pagamento.grid(row=row_counter, column=0, padx=5, pady=5, stick='w')
+    entry_forma_pagamento.grid(row= row_counter, column=1, padx=5, pady=5)
+    row_counter += 1
+
+    botao_salvar_pagamentos.grid(row=row_counter, columnspan=4, pady=20)
+    
+    recarregar_tabela()
+
 def abrir_formulario_fornecedores(container):
     for widget in container.winfo_children():
         widget.destroy()
@@ -791,6 +886,7 @@ def abrir_janela_principal():
     menu_cadastro.add_command(label="Fornecedores", command=lambda: abrir_formulario_fornecedores(frame_principal))
     barra_de_menu.add_cascade(label="Cadastro", menu=menu_cadastro)
     menu_financeiro = tk.Menu(barra_de_menu, tearoff=0)
+    menu_financeiro.add_command(label="Editar Contas a Pagar", command=lambda: abrir_formulario_editar_pagamentos(frame_principal))
     menu_financeiro.add_command(label="Adicionar Contas a Pagar", command=lambda: abrir_formulario_pagamentos(frame_principal))
     barra_de_menu.add_cascade(label="Financeiro", menu=menu_financeiro)
     

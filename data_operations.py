@@ -72,3 +72,11 @@ def get_pagamentos_por_periodo(start_date, end_date, status_pagamento: str = "To
     except Exception as e:
         logging.error(f"Erro ao buscar pagamentos pela data '{start_date, end_date}': {e}")
         return []
+
+def get_pagamentos_nao_pagos():
+    try:
+        with SessionLocal() as db:
+            return db.query(Pagamento).options(joinedload(Pagamento.fornecedor)).filter(Pagamento.data_pagamento.is_(None)).order_by(Pagamento.data_vencimento).all()
+    except Exception as e:
+        logging.error(f"Erro ao buscar pagamentos não pagos: {e}")
+        return []

@@ -23,3 +23,21 @@ def add_pagamento(dados_pagamento: dict):
     except Exception as e:
         logging.error(f"Erro ao adicionar pagamento '{dados_pagamento['numero_nota']}': {e}")
         return None
+    
+def atualizar_pagamento(pagamento_id: int, novos_dados: dict):
+    try:
+        with SessionLocal() as db:
+            pagamento = db.query(Pagamento).filter(Pagamento.id == pagamento_id).first()
+            if pagamento:
+                pagamento.data_pagamento = novos_dados.get('data_pagamento')
+                pagamento.forma_pagamento = novos_dados.get('forma_pagamento')
+                db.commit()
+                db.refresh(pagamento)
+                logging.info(f"Pagamento {pagamento_id} marcada como paga.")
+                return pagamento
+            else:
+                logging.warning(f"Pagamento {pagamento_id} não foi marcada como paga.")
+                return None
+    except Exception as e:
+        logging.error(f"Erro ao marcar pagamento {pagamento_id} como paga no banco de dados: {e}")
+        return None
