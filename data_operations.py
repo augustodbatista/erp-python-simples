@@ -80,3 +80,17 @@ def get_pagamentos_nao_pagos():
     except Exception as e:
         logging.error(f"Erro ao buscar pagamentos não pagos: {e}")
         return []
+    
+def search_pagamentos_nao_pagos(criterio: str, valor: str):
+    try:
+        with SessionLocal() as db:
+            query = db.query(Pagamento).options(joinedload(Pagamento.fornecedor)).filter(Pagamento.data_pagamento.is_(None))
+            if criterio == "Fornecedor":
+                query = query.join(Fornecedor).filter(Fornecedor.nome_fornecedor.ilike(f'%{valor}%'))
+            elif criterio == "Número da nota":
+                query = query.filter(Pagamento.numero_nota.ilike(f'%{valor}%'))
+            criterio_selecionado = query.order_by(Pagamento.data_vencimento).all()
+            return criterio_selecionado
+    except Exception as e:
+        logging.error(f"Erro ao buscar pagamentos não pagos pelo critério '{criterio}': {e}")
+        return []

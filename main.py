@@ -4,10 +4,10 @@ from tkcalendar import DateEntry
 from ttkthemes import ThemedTk
 from datetime import date
 from user_operations import verify_user
-from data_operations import get_todos_vendedores, get_todos_clientes, search_clientes_por_nome, search_fornecedores_por_nome, search_vendas_nao_pagas, get_pagamentos_por_periodo, get_pagamentos_nao_pagos
+from data_operations import get_todos_vendedores, get_todos_clientes, search_clientes_por_nome, search_fornecedores_por_nome, search_vendas_nao_pagas, get_pagamentos_por_periodo, get_pagamentos_nao_pagos, search_pagamentos_nao_pagos
 from vendas_operation import add_venda, get_sales_by_period_and_vendedor, get_sales_by_period_and_cliente, get_total_sales_by_period, get_paid_unpaid_sales_by_client
 from cliente_operations import add_cliente
-from pagamento_operations import add_pagamento
+from pagamento_operations import add_pagamento, atualizar_pagamento
 from fornecedor_operations import add_fornecedor
 import logging
 
@@ -712,13 +712,12 @@ def abrir_formulario_editar_pagamentos(container):
     for widget in container.winfo_children():
         widget.destroy()
     
-    def recarregar_tabela():
-        pagamentos_nao_pagos = get_pagamentos_nao_pagos()
+    def preencher_tabela(pagamentos):
         for item in tabela_pagamentos.get_children():
             tabela_pagamentos.delete(item)
-    
-        if pagamentos_nao_pagos:
-            for pagamento in pagamentos_nao_pagos:
+
+        if pagamentos:
+            for pagamento in pagamentos:
                 tabela_pagamentos.insert(parent="", index='end', values=(
                     pagamento.id,
                     pagamento.numero_nota,
@@ -728,7 +727,13 @@ def abrir_formulario_editar_pagamentos(container):
                     pagamento.fornecedor.nome_fornecedor
                 ))
 
+    def handle_buscar_pagamentos():
+        criterio = criterio_selecionado.get()
+        valor = entry_termo_busca.get()
 
+        resultados_busca = search_pagamentos_nao_pagos(criterio, valor)
+        preencher_tabela(resultados_busca)
+    
     def handle_salvar_alteracoes_pagamentos():
         item_selecionado_id = tabela_pagamentos.selection()
 
@@ -741,21 +746,28 @@ def abrir_formulario_editar_pagamentos(container):
 
         confirmar = messagebox.askyesno("Confirmar Pagamento", f"Tem certeza que deseja marcar a pagamento ID {pagamento_id} como paga?")
         if confirmar:
-            from pagamento_operations import atualizar_pagamento # Import here to avoid circular dependency
-            forma_pagamento_texto = entry_forma_pagamento.get()
-            data_pagamento_texto = entry_data_pagamento.get_date()
             novos_dados = {
                 'data_pagamento': entry_data_pagamento.get_date(),
                 'forma_pagamento': entry_forma_pagamento.get()
             }
             resultado = atualizar_pagamento(int(pagamento_id), novos_dados)
+
             if resultado:
                 messagebox.showinfo("Sucesso", f"Pagamento ID {pagamento_id} marcada como paga com sucesso!")
-                recarregar_tabela()
+                pagamentos_atualizados = get_pagamentos_nao_pagos()
+                preencher_tabela(pagamentos_atualizados)
                 
             else:
                 messagebox.showerror("Erro", f"Não foi possível marcar a pagamento ID {pagamento_id} como paga.")
-    
+
+    label_buscar_por = ttk.Label(container, text="Buscar por:")
+    opcoes_busca =["Fornecedores", "Número da nota"]
+    criterio_selecionado = tk.StringVar()
+    combo_criterio_busca = ttk.Combobox(container, textvariable=criterio_selecionado, values=opcoes_busca, state="readonly")
+    combo_criterio_busca.set(opcoes_busca[0])
+    entry_termo_busca = ttk.Entry(container, style='Padded.TEntry')
+    botao_buscar = ttk.Button(container, text="Buscar", command=handle_buscar_pagamentos)
+
     label_data_pagamento = ttk.Label(container, text="Data de Pagamento",)
     entry_data_pagamento = DateEntry(container, style="Padded.TEntry")
     label_forma_pagamento = ttk.Label(container, text="Forma de Pagamento:")
@@ -782,10 +794,16 @@ def abrir_formulario_editar_pagamentos(container):
 
     # Layout
     row_counter = 0
-    tabela_pagamentos.grid(row=row_counter, column=0,columnspan=3, padx=5, pady=5, sticky="nsew")
+    label_buscar_por.grid(row=row_counter, column=0, padx=5, pady=5,sticky='w')
+    combo_criterio_busca.grid(row=row_counter, column=1, padx=5, pady=5, sticky='ew')
+    entry_termo_busca.grid(row=row_counter, column=2, padx=5, pady=5, sticky='ew')
+    botao_buscar.grid(row=row_counter,column=3, padx=5, pady=5)
+    row_counter += 1
+
+    tabela_pagamentos.grid(row=row_counter, column=0,columnspan=4, padx=5, pady=5, sticky="nsew")
     # Add a scrollbar to the Treeview
     scrollbar = ttk.Scrollbar(container, orient="vertical", command=tabela_pagamentos.yview)
-    scrollbar.grid(row=row_counter, column=3, sticky="ns")
+    scrollbar.grid(row=row_counter, column=4, sticky="ns")
     tabela_pagamentos.configure(yscrollcommand=scrollbar.set)
     row_counter += 1
 
@@ -798,8 +816,9 @@ def abrir_formulario_editar_pagamentos(container):
     row_counter += 1
 
     botao_salvar_pagamentos.grid(row=row_counter, columnspan=4, pady=20)
-    
-    recarregar_tabela()
+
+    pagamentos_iniciais = get_pagamentos_nao_pagos()
+    preencher_tabela(pagamentos_iniciais)
 
 def abrir_formulario_fornecedores(container):
     for widget in container.winfo_children():
