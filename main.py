@@ -10,6 +10,7 @@ from cliente_operations import add_cliente
 from pagamento_operations import add_pagamento, atualizar_pagamento
 from fornecedor_operations import add_fornecedor
 import logging
+from ui.ui_components import WidgetBuscaCliente
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -20,6 +21,11 @@ def abrir_formulario_vendas(container):
     for widget in container.winfo_children():
         widget.destroy()
 
+    dados_cliente_selecionado = {}
+    
+    def on_cliente_selecionado_callback(dados_cliente):
+        dados_cliente_selecionado.update(dados_cliente)
+        logging.info(f"Callback recebido: Cliente ID {dados_cliente.get('id')} selecionado.")
         
 
     def handle_salvar_venda():
@@ -62,41 +68,10 @@ def abrir_formulario_vendas(container):
         entry_notinha.delete(0, tk.END)
         entry_data.set_date(date.today())
         vendedor_selecionado.set("")
-        for item in tabela_clientes.get_children():
-            tabela_clientes.delete(item)
-        label_cliente_selecionado.config(text="Cliente Selecionado: Nenhum")
         entry_valor.delete(0, tk.END)
         entry_forma_pagamento.delete(0, tk.END)
         entry_data_vencimento.set_date(date.today())
         status_pago.set(False)
-    
-    def handle_busca_cliente():
-        termo_busca = entry_busca_cliente.get()
-        resultados = search_clientes_por_nome(termo_busca)
-        
-        # Limpa a tabela de resultados antigos (com a correção)
-        for item in tabela_clientes.get_children():
-            tabela_clientes.delete(item)
-            
-        if resultados:
-            for cliente in resultados:
-                tabela_clientes.insert(parent='', index='end', values=(
-                    cliente.id, cliente.nome_cliente, cliente.telefone, cliente.endereco
-                ))
-    
-    dados_cliente_selecionado = {}
-
-    def handle_selecao_cliente(event):
-        item_selecionado_id = tabela_clientes.selection()
-        if not item_selecionado_id:
-            return
-        
-        id_da_linha = item_selecionado_id[0]
-        valores = tabela_clientes.item(id_da_linha, 'values')
-        dados_cliente_selecionado['id'] = int(valores[0])
-        dados_cliente_selecionado['nome'] = valores[1]
-        label_cliente_selecionado.config(text=f"Cliente Selecionado: {dados_cliente_selecionado['nome']}")
-            
 
     vendedor_selecionado = tk.StringVar()
     status_pago = tk.BooleanVar()
@@ -114,23 +89,6 @@ def abrir_formulario_vendas(container):
     combo_vendedor = ttk.Combobox(container, textvariable=vendedor_selecionado, values=lista_vendedores, state='readonly')
     if lista_vendedores:
         combo_vendedor.set(lista_vendedores[0])
-        
-    label_busca_cliente = ttk.Label(container, text="Buscar Cliente:")
-    entry_busca_cliente = ttk.Entry(container, style='Padded.TEntry')
-    botao_buscar_cliente = ttk.Button(container, text="Buscar", command=handle_busca_cliente)
-
-    colunas = ('id', 'nome', 'telefone', 'endereco')
-    tabela_clientes = ttk.Treeview(container, columns=colunas, show='headings', height=4)
-    tabela_clientes.heading('id', text='ID')
-    tabela_clientes.heading('nome', text='Nome')
-    tabela_clientes.heading('telefone', text='Telefone')
-    tabela_clientes.heading('endereco', text='Endereço')
-    tabela_clientes.column('id', width=40)
-    tabela_clientes.column('nome', width=200)
-    tabela_clientes.column('telefone', width=100)
-    tabela_clientes.column('endereco', width=250)
-
-    label_cliente_selecionado = ttk.Label(container, text="Cliente Selecionado: Nenhum")
 
     label_valor = ttk.Label(container, text="Valor Total:")
     entry_valor = ttk.Entry(container, style='Padded.TEntry')
@@ -142,47 +100,40 @@ def abrir_formulario_vendas(container):
     check_pago = ttk.Checkbutton(container, variable=status_pago)
     check_participacao = ttk.Checkbutton(container, variable=status_participacao)
 
-    # Linha 0
-    label_notinha.grid(row=0, column=0, padx=5, pady=5, sticky="w")
-    entry_notinha.grid(row=0, column=1, padx=5, pady=5)
-    label_data.grid(row=0, column=2, padx=5, pady=5, sticky="w")
-    entry_data.grid(row=0, column=3, padx=5, pady=5)
+    # Layout
+    row_counter = 0
+    label_notinha.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
+    entry_notinha.grid(row=row_counter, column=1, padx=5, pady=5)
+    label_data.grid(row=row_counter, column=2, padx=5, pady=5, sticky="w")
+    entry_data.grid(row=row_counter, column=3, padx=5, pady=5)
+    row_counter += 1
     
-    # Linha 1
-    label_vendedor.grid(row=1, column=0, padx=5, pady=5, sticky="w")
-    combo_vendedor.grid(row=1, column=1, padx=5, pady=5)
-    
-    # Linha 2 - Busca de Cliente
-    label_busca_cliente.grid(row=2, column=0, padx=5, pady=5, sticky="w")
-    entry_busca_cliente.grid(row=2, column=1, padx=5, pady=5)
-    botao_buscar_cliente.grid(row=2, column=2, padx=5, pady=5)
-    
-    # Linha 3 - Tabela de Resultados
-    tabela_clientes.grid(row=3, column=0, columnspan=4, padx=5, pady=5, sticky="ew")
+    label_vendedor.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
+    combo_vendedor.grid(row=row_counter, column=1, padx=5, pady=5)
+    row_counter += 1
 
-    # Linha 4 - Cliente Selecionado
-    label_cliente_selecionado.grid(row=4, column=0, columnspan=4, padx=5, pady=5, sticky="w")
-    tabela_clientes.bind('<<TreeviewSelect>>', handle_selecao_cliente)
+    widget_busca_cliente = WidgetBuscaCliente(container, on_cliente_selecionado_callback)
+    widget_busca_cliente.grid(row=row_counter, columnspan=4, padx=5, pady=5, sticky='ew')
+    row_counter += 1
     
-    # Linha 5 - Detalhes Financeiros
-    label_valor.grid(row=5, column=0, padx=5, pady=5, sticky="w")
-    entry_valor.grid(row=5, column=1, padx=5, pady=5)
-    label_forma_pagamento.grid(row=5, column=2, padx=5, pady=5, sticky="w")
-    entry_forma_pagamento.grid(row=5, column=3, padx=5, pady=5)
-    
-    # Linha 6 - Prazos e Status
-    label_data_vencimento.grid(row=6, column=0, padx=5, pady=5, sticky="w")
-    entry_data_vencimento.grid(row=6, column=1, padx=5, pady=5)
-    label_pago.grid(row=6, column=2, padx=5, pady=5, sticky="w")
-    check_pago.grid(row=6, column=3, padx=5, pady=5, sticky="w")
+    label_valor.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
+    entry_valor.grid(row=row_counter, column=1, padx=5, pady=5)
+    label_forma_pagamento.grid(row=row_counter, column=2, padx=5, pady=5, sticky="w")
+    entry_forma_pagamento.grid(row=row_counter, column=3, padx=5, pady=5)
+    row_counter += 1
 
-    # Linha 7: Participação
-    ttk.Label(container, text="Com participação?").grid(row=7, column=0, padx=5, pady=5, sticky="w")
-    check_participacao.grid(row=7, column=1, padx=5, pady=5, sticky="w")
+    label_data_vencimento.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
+    entry_data_vencimento.grid(row=row_counter, column=1, padx=5, pady=5)
+    label_pago.grid(row=row_counter, column=2, padx=5, pady=5, sticky="w")
+    check_pago.grid(row=row_counter, column=3, padx=5, pady=5, sticky="w")
+    row_counter += 1
 
-     # --- Linha 8: Botão Salvar (AJUSTADO) ---
+    ttk.Label(container, text="Com participação?").grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
+    check_participacao.grid(row=row_counter, column=1, padx=5, pady=5, sticky="w")
+    row_counter += 1
+
     botao_salvar = ttk.Button(container, text="Salvar Venda", command=handle_salvar_venda)
-    botao_salvar.grid(row=8, column=0, columnspan=4, pady=20)
+    botao_salvar.grid(row=row_counter, column=0, columnspan=4, pady=20)
 
 def abrir_formulario_vendas_nao_pagas(container):
     for widget in container.winfo_children():
@@ -288,6 +239,16 @@ def abrir_formulario_relatorios_vendas(container):
     for widget in container.winfo_children():
         widget.destroy()
 
+    cliente_id_selecionado = None
+
+    def on_relatorio_cliente_selecionado_callback(dados_cliente):
+        nonlocal cliente_id_selecionado
+        if dados_cliente:
+            cliente_id_selecionado = dados_cliente.get('id')
+            logging.info(f"Callback recebido: Cliente ID {dados_cliente.get('id')} selecionado.")  
+        else:
+            cliente_id_selecionado = None
+        
     def handle_gerar_relatorio():
         start_date = entry_data_inicio.get_date()
         end_date = entry_data_fim.get_date()
@@ -315,11 +276,6 @@ def abrir_formulario_relatorios_vendas(container):
     lista_vendedores = ["Todos"] + list(mapa_vendedores.keys())
     combo_vendedor = ttk.Combobox(container, textvariable=vendedor_selecionado, values=lista_vendedores, state='readonly')
     combo_vendedor.set("Todos")
-
-
-    label_cliente = ttk.Label(container, text="Cliente (Nome ou ID):")
-    entry_cliente_busca = ttk.Entry(container)
-    cliente_id_selecionado = None 
     
     status_pagamento_selecionado = tk.StringVar()
     lista_status_pagamento = ['Todos', 'Pagas', 'Não Pagas']
@@ -327,32 +283,6 @@ def abrir_formulario_relatorios_vendas(container):
     combo_status_pagamento = ttk.Combobox(container, textvariable=status_pagamento_selecionado, values=lista_status_pagamento, state="readonly")
     combo_status_pagamento.set("Todos")
 
-    def handle_buscar_cliente_relatorio():
-        nonlocal cliente_id_selecionado
-        termo_busca = entry_cliente_busca.get()
-        if not termo_busca:
-            cliente_id_selecionado = None
-            messagebox.showinfo("Busca de Cliente", "Nenhum termo de busca fornecido. O relatório incluirá todos os clientes.")
-            return
-
-        if termo_busca.isdigit():
-            cliente_id_selecionado = int(termo_busca)
-            messagebox.showinfo("Busca de Cliente", f"Cliente ID {cliente_id_selecionado} selecionado.")
-        else:
-            resultados = search_clientes_por_nome(termo_busca)
-            if resultados:
-                if len(resultados) == 1:
-                    cliente_id_selecionado = resultados[0].id
-                    messagebox.showinfo("Busca de Cliente", f"Cliente '{resultados[0].nome_cliente}' (ID: {resultados[0].id}) selecionado.")
-                else:
-                    # For multiple results, a more complex UI would be needed to select one
-                    messagebox.showwarning("Múltiplos Clientes", "Múltiplos clientes encontrados. Por favor, refine a busca ou insira o ID exato.")
-                    cliente_id_selecionado = None
-            else:
-                cliente_id_selecionado = None
-                messagebox.showinfo("Busca de Cliente", "Cliente não encontrado.")
-
-    botao_buscar_cliente_relatorio = ttk.Button(container, text="Buscar Cliente", command=handle_buscar_cliente_relatorio)
 
     # Treeview for results
     colunas = ('id', 'notinha', 'data_venda', 'valor_total', 'cliente', 'vendedor', 'pago', 'data_vencimento')
@@ -412,9 +342,8 @@ def abrir_formulario_relatorios_vendas(container):
     combo_vendedor.grid(row=row_counter, column=1, padx=5, pady=5)
     row_counter += 1
 
-    label_cliente.grid(row=row_counter, column=0, padx=5, pady=5, sticky="w")
-    entry_cliente_busca.grid(row=row_counter, column=1, padx=5, pady=5)
-    botao_buscar_cliente_relatorio.grid(row=row_counter, column=2, padx=5, pady=5)
+    widget_busca_cliente = WidgetBuscaCliente(container, on_relatorio_cliente_selecionado_callback)
+    widget_busca_cliente.grid(row=row_counter, columnspan=4, padx=5, pady=5, sticky='ew')
     row_counter += 1
 
     status_pagamento.grid(row=row_counter,column=0, padx=5, pady=5, sticky="w")
