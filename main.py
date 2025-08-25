@@ -370,8 +370,17 @@ def abrir_formulario_relatorio_pagamentos(container):
          widget.destroy()
 
     def handle_buscar_relatorio_pagamentos():
-        start_date = entry_data_inicio.get_date()
-        end_date = entry_data_fim.get_date()
+        start_date = entry_data_inicio.get()
+        if start_date == "":
+            start_date = None
+        else:
+            start_date = entry_data_inicio.get_date()
+        end_date = entry_data_fim.get()
+        if end_date == "":
+            end_date = None
+        else:
+            end_date = entry_data_fim.get_date()
+
         status_selecionado = status_pagamento_selecionado.get()
         lista_pagamentos = get_pagamentos_por_periodo(start_date, end_date, status_selecionado)
         
@@ -393,10 +402,14 @@ def abrir_formulario_relatorio_pagamentos(container):
                 tabela_relatorio.insert(parent='', index='end', values=valores_da_linha)
         preencher_relatorio_pagamentos(lista_pagamentos)
     
+
     label_data_inicio = ttk.Label(container, text="Data Início:")
     entry_data_inicio = DateEntry(container, date_pattern='dd/MM/yyyy')
+    entry_data_inicio.delete(0, tk.END)
     label_data_fim = ttk.Label(container, text="Data Fim:")
     entry_data_fim = DateEntry(container, date_pattern='dd/MM/yyyy')
+    entry_data_fim.delete(0, tk.END)
+
     botao_buscar_relatorio_pagamentos = ttk.Button(container, text="Buscar Pagamentos", command=handle_buscar_relatorio_pagamentos)
     status_pagamento_selecionado = tk.StringVar()
     lista_status_pagamento = ['Todos', 'Pagas', 'Não Pagas']
@@ -404,7 +417,7 @@ def abrir_formulario_relatorio_pagamentos(container):
     combo_status_pagamento = ttk.Combobox(container, textvariable=status_pagamento_selecionado, values=lista_status_pagamento, state="readonly")
     combo_status_pagamento.set("Todos")
 
-    colunas = ('id', 'numero_nota', 'data_vencimento', 'valor_nota', 'data_pagamento', 'fornecedor')
+    colunas = ('id', 'numero_nota', 'data_vencimento', 'valor_nota', 'data_pagamento', 'fornecedor', 'forma_pagamento')
     tabela_relatorio = ttk.Treeview(container, columns=colunas, show='headings', height=15)
     tabela_relatorio.heading('id', text='ID')
     tabela_relatorio.heading('numero_nota', text='Numero Nota')

@@ -62,7 +62,14 @@ def search_vendas_nao_pagas(termo_busca: str):
 def get_pagamentos_por_periodo(start_date, end_date, status_pagamento: str = "Todos"):
     try:
         with SessionLocal() as db:
-            query = db.query(Pagamento).options(joinedload(Pagamento.fornecedor)).filter(Pagamento.data_vencimento.between(start_date, end_date))
+            query = db.query(Pagamento).options(joinedload(Pagamento.fornecedor))
+            if start_date and end_date:
+                query = query.filter(Pagamento.data_vencimento.between(start_date, end_date))
+            elif start_date:
+                query = query.filter(Pagamento.data_vencimento >= start_date)
+            elif end_date:
+                query = query.filter(Pagamento.data_vencimento <= end_date)
+            
             if status_pagamento == "Pagas":
                 query = query.filter(Pagamento.data_pagamento.is_not(None))
             elif status_pagamento == "Não Pagas":

@@ -45,14 +45,13 @@ class Venda(Base):
     numero_notinha = Column(Integer, nullable=False)
     data_venda = Column(Date, nullable=False)
     valor_total = Column(Numeric(10,2), nullable=False)
-    pago = Column(Boolean, nullable=False, default=False)
-    forma_pagamento = Column(String(150), nullable=False)
     data_vencimento = Column(Date)
     cliente_id = Column(Integer, ForeignKey('clientes.id'), nullable=False)
     vendedor_id = Column(Integer, ForeignKey('vendedores.id'), nullable=False)
     participacao_vendas = Column(Boolean, default=False)
     cliente = relationship("Cliente", back_populates="vendas")
     vendedor = relationship("Vendedor", back_populates="vendas")
+    pagamentos = relationship("PagamentoVenda", back_populates="venda")
     def __repr__(self):
         return f"Venda(id={self.id}, cliente_id={self.cliente_id}, vendedor_id={self.vendedor_id}, valor_total={self.valor_total})"
     
@@ -81,3 +80,13 @@ class Pagamento(Base):
     fornecedor = relationship("Fornecedor", back_populates="pagamentos")
     def __repr__(self):
         return f"Pagamento(id={self.id}, numero_nota={self.numero_nota}, data_vencimento={self.data_vencimento}, valor_nota={self.valor_nota})"
+    
+class PagamentoVendas(Base):
+    __tablename__ = "pagamento_vendas"
+
+    id = Column(Integer, primary_key=True)
+    valor_pago = Column(Numeric(10, 2), nullable=False)
+    data_pagamento = Column(Date, nullable=False)
+    forma_pagamento = Column(String(100))
+    venda_id = Column(Integer, ForeignKey('vendas.id'), nullable=False)
+    venda = relationship("Venda", back_populates="pagamentos")
