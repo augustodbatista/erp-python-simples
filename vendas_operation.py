@@ -1,5 +1,5 @@
 from sqlalchemy.orm import joinedload
-from models import Venda, Pagamento, Cliente, Vendedor
+from models import Venda, Pagamento, Cliente, Vendedor, PagamentoVenda
 from sqlalchemy import func
 from datetime import date
 from database import SessionLocal
@@ -39,28 +39,6 @@ def get_vendas_nao_pagas():
     except Exception as e:
         logging.error(f"Erro ao buscar todas vendas nao pagas: {e}")
         return []
-
-def marcar_venda_como_paga(venda_id: int, forma_pagamento: str):
-
-    try:
-        with SessionLocal() as db:
-
-            venda = db.query(Venda).filter(Venda.id == venda_id).first()
-            if venda:
-                venda.pago = True
-                venda.forma_pagamento = forma_pagamento
-                db.commit()
-                db.refresh(venda)
-                logging.info(f"Venda {venda_id} marcada como paga.")
-                return venda
-            else:
-                logging.warning(f"Venda {venda_id} não foi marcada como paga.")
-                return None
-    except Exception as e:
-        logging.error(f"Erro ao marcar venda {venda_id} como paga no banco de dados: {e}")
-        return None
-
-
 
 def get_sales_by_period_and_vendedor(start_date: date, end_date: date, vendedor_id: int = None, status_pagamento: str = 'Todos'):
 
@@ -116,3 +94,33 @@ def get_paid_unpaid_sales_by_client(cliente_id: int, paid_status: bool = None):
         logging.error(f"Erro ao buscar vendas: {e}")
         return []
 
+def get_saldo_devedor(venda_id: int):
+    try:
+        with SessionLocal() as db:
+            venda = db.query(Venda).filter(Venda.id == venda_id).first()
+            if venda:
+                valor_venda = venda.valor_total
+                total_pago = db.query(func.sum(PagamentoVenda.valor_pago)).filter(PagamentoVenda.venda_id == venda_id).scalar()
+                if total_pago is None:
+                    total_pago = 0
+                saldo_devedor = valor_venda - total_pago
+                return saldo_devedor
+            else:
+                return None
+    except Exception as e:
+        logging.error(f"Erro ao buscar saldo da venda {venda_id}: {e}")
+        return None
+    
+def get_vendas_com_saldo_devedor():
+    try:
+        with SessionLocal() as db:
+            query = db.query(Venda).all()
+            vendas_em_aberto = []
+            for venda in query:
+                saldo = get_saldo_devedor(venda.id)
+                if saldo is not None and saldo > 0:
+                    vendas_em_aberto.append(venda)
+            return vendas_em_aberto
+    except Exception as e:
+        logging.error(f"Erro ao buscar vendas com saldo devedor: {e}")
+        return []

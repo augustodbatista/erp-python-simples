@@ -81,7 +81,7 @@ class Pagamento(Base):
     def __repr__(self):
         return f"Pagamento(id={self.id}, numero_nota={self.numero_nota}, data_vencimento={self.data_vencimento}, valor_nota={self.valor_nota})"
     
-class PagamentoVendas(Base):
+class PagamentoVenda(Base):
     __tablename__ = "pagamento_vendas"
 
     id = Column(Integer, primary_key=True)

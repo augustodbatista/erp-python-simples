@@ -5,10 +5,11 @@ from ttkthemes import ThemedTk
 from datetime import date
 from user_operations import verify_user
 from data_operations import get_todos_vendedores, get_todos_clientes, search_clientes_por_nome, search_fornecedores_por_nome, search_vendas_nao_pagas, get_pagamentos_por_periodo, get_pagamentos_nao_pagos, search_pagamentos_nao_pagos
-from vendas_operation import add_venda, get_sales_by_period_and_vendedor, get_sales_by_period_and_cliente, get_total_sales_by_period, get_paid_unpaid_sales_by_client
+from vendas_operation import add_venda, get_sales_by_period_and_vendedor, get_sales_by_period_and_cliente, get_total_sales_by_period, get_paid_unpaid_sales_by_client, get_vendas_com_saldo_devedor, get_saldo_devedor
 from cliente_operations import add_cliente
 from pagamento_operations import add_pagamento, atualizar_pagamento
 from fornecedor_operations import add_fornecedor
+from pagamento_venda_operations import add_pagamento_venda
 import logging
 from ui.ui_components import WidgetBuscaCliente
 
@@ -141,16 +142,17 @@ def abrir_formulario_vendas_nao_pagas(container):
 
     def handle_buscar_vendas():
         termo_busca = entry_busca_venda.get()
-        vendas = search_vendas_nao_pagas(termo_busca)
+        vendas = get_vendas_com_saldo_devedor()
         
         for item in tabela_vendas.get_children():
             tabela_vendas.delete(item)
             
         if vendas:
             for venda in vendas:
-                # Fetch client name for display
                 cliente_nome = ""
-                if venda.cliente: # Check if client relationship is loaded
+                saldo = get_saldo_devedor(venda.id)
+                total_pago = venda.valor_total - saldo
+                if venda.cliente:
                     cliente_nome = venda.cliente.nome_cliente
                 
                 tabela_vendas.insert(parent='', index='end', values=(
@@ -159,56 +161,83 @@ def abrir_formulario_vendas_nao_pagas(container):
                     venda.data_venda.strftime('%d/%m/%Y'),
                     venda.valor_total,
                     cliente_nome,
-                    venda.data_vencimento.strftime('%d/%m/%Y') if venda.data_vencimento else 'N/A'
+                    venda.data_vencimento.strftime('%d/%m/%Y') if venda.data_vencimento else 'N/A',
+                    total_pago,
+                    saldo
                 ))
         else:
             messagebox.showinfo("Busca de Vendas", "Nenhuma venda não paga encontrada com o termo de busca.")
-
-    def handle_marcar_como_paga():
-        item_selecionado_id = tabela_vendas.selection()
-        if not item_selecionado_id:
-            messagebox.showwarning("Seleção Necessária", "Por favor, selecione uma venda na tabela para marcar como paga.")
+    
+    
+    def handle_registrar_pagamento():
+        venda_selecionada = tabela_vendas.selection()
+        if not venda_selecionada:
+            messagebox.showwarning("Nenhuma venda selecionada")
             return
+        id_da_linha = venda_selecionada[0]
+        valores_da_linha = tabela_vendas.item(id_da_linha, 'values')
+        venda_id = valores_da_linha[0]
+        janela_pagamento = tk.Toplevel(container)
+        janela_pagamento.title("Registrar Pagamento")
+        label_valor_pago = ttk.Label(janela_pagamento, text="Valor Pago:",)
+        entry_valor_pago = ttk.Entry(janela_pagamento, style='Padded.TEntry')
+        label_data_pagamento = ttk.Label(janela_pagamento, text="Data:")
+        entry_data_pagamento = DateEntry(janela_pagamento, date_pattern='dd/MM/yyyy')
+        label_forma_pagamento = ttk.Label(janela_pagamento, text="Forma de Pagamento:")
+        entry_forma_pagamento = ttk.Entry(janela_pagamento, style="Padded.TEntry")
+
+        botao_salvar = ttk.Button(janela_pagamento, text="Salvar", command=handle_salvar_novo_pagamento)
+
+        def handle_salvar_novo_pagamento():
+            janela_valor_pago = entry_valor_pago.get()
+            janela_data_pagamento = entry_data_pagamento.get_date()
+            janela_forma_pagamento = entry_forma_pagamento.get()
+            
         
-        id_da_linha = item_selecionado_id[0]
-        venda_id = tabela_vendas.item(id_da_linha, 'values')[0] # Get the ID from the first column
-        
-        confirmar = messagebox.askyesno("Confirmar Pagamento", f"Tem certeza que deseja marcar a venda ID {venda_id} como paga?")
-        if confirmar:
-            from vendas_operation import marcar_venda_como_paga # Import here to avoid circular dependency
-            forma_pagamento_texto = entry_forma_pagamento.get()
-            resultado = marcar_venda_como_paga(int(venda_id), forma_pagamento_texto)
-            if resultado:
-                messagebox.showinfo("Sucesso", f"Venda ID {venda_id} marcada como paga com sucesso!")
-                handle_buscar_vendas() # Refresh the list
-            else:
-                messagebox.showerror("Erro", f"Não foi possível marcar a venda ID {venda_id} como paga.")
+
+        #Layout
+        row_counter = 0
+        label_valor_pago.grid(row=row_counter, column=0, padx=5, pady=5,sticky='w')
+        entry_valor_pago.grid(row=row_counter, column=1, padx=5, pady=5)
+        row_counter += 1
+
+        label_data_pagamento.grid(row=row_counter, column=0, padx=5, pady=5, sticky='w')
+        entry_data_pagamento.grid(row=row_counter, column=1, padx=5, pady=5)
+        row_counter += 1
+
+        label_forma_pagamento.grid(row=row_counter, column=0, padx=5, pady=5, sticky='w')
+        entry_forma_pagamento.grid(row=row_counter, column=1, padx=5, pady=5)
+        row_counter += 1
+
+        botao_salvar.grid(row=row_counter, columnspan=4, padx=5, pady=5)
+
 
     # UI Elements
     label_busca_venda = ttk.Label(container, text="Buscar Venda (Notinha ou Cliente):")
     entry_busca_venda = ttk.Entry(container, style='Padded.TEntry')
     botao_buscar_venda = ttk.Button(container, text="Buscar", command=handle_buscar_vendas)
 
-    colunas = ('id', 'notinha', 'data_venda', 'valor_total', 'cliente', 'data_vencimento')
+    colunas = ('id', 'notinha', 'data_venda', 'valor_original', 'cliente', 'data_vencimento', 'total_pago', 'saldo_devedor')
     tabela_vendas = ttk.Treeview(container, columns=colunas, show='headings', height=10)
     tabela_vendas.heading('id', text='ID')
     tabela_vendas.heading('notinha', text='Notinha')
     tabela_vendas.heading('data_venda', text='Data Venda')
-    tabela_vendas.heading('valor_total', text='Valor Total')
+    tabela_vendas.heading('valor_original', text='Valor Original')
     tabela_vendas.heading('cliente', text='Cliente')
     tabela_vendas.heading('data_vencimento', text='Vencimento')
+    tabela_vendas.heading('total_pago', text='Total Pago')
+    tabela_vendas.heading('saldo_devedor', text= "Saldo Devedor")
 
     tabela_vendas.column('id', width=50)
     tabela_vendas.column('notinha', width=80)
     tabela_vendas.column('data_venda', width=100)
-    tabela_vendas.column('valor_total', width=100)
+    tabela_vendas.column('valor_original', width=100)
+    tabela_vendas.column('total_pago', width=100)
+    tabela_vendas.column('saldo_devedor', width=100)
     tabela_vendas.column('cliente', width=200)
     tabela_vendas.column('data_vencimento', width=100)
 
-    label_forma_pagamento = ttk.Label(container, text="Forma de Pagamento")
-    entry_forma_pagamento = ttk.Entry(container, style="Padded.TEntry")
-
-    botao_marcar_paga = ttk.Button(container, text="Marcar como Paga", command=handle_marcar_como_paga)
+    botao_registrar_pagamento = ttk.Button(container, text="Registrar Pagamento", command=handle_registrar_pagamento)
 
     # Layout
     row_counter = 0
@@ -224,9 +253,7 @@ def abrir_formulario_vendas_nao_pagas(container):
     tabela_vendas.configure(yscrollcommand=scrollbar.set)
     row_counter += 1
 
-    label_forma_pagamento.grid(row=row_counter, column=0, padx=(5,0), pady=5, sticky='w')
-    entry_forma_pagamento.grid(row=row_counter, column=1, columnspan=4, sticky='ew')
-    botao_marcar_paga.grid(row=row_counter, column=5, pady=10, padx=5)
+    botao_registrar_pagamento.grid(row=row_counter, column=5, pady=10, padx=5)
 
     # Configure grid to expand with window
     container.grid_rowconfigure(1, weight=1)
